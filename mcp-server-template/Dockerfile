@@ -4,7 +4,7 @@ FROM node:20-alpine
 LABEL org.opencontainers.image.title="@petaio/mcp-server-template"
 LABEL org.opencontainers.image.description="MCP Server Template for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
-LABEL org.opencontainers.image.source="https://github.com/petaio/mcp-server-template"
+LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-server-template"
 
 # Install necessary system dependencies
 RUN apk add --no-cache \

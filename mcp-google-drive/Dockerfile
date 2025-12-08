@@ -4,7 +4,7 @@ FROM node:18-alpine
 LABEL org.opencontainers.image.title="@petaio/mcp-google-drive"
 LABEL org.opencontainers.image.description="Google Drive MCP Server for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
-LABEL org.opencontainers.image.source="https://github.com/petaio/mcp-google-drive"
+LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-google-drive"
 
 # Install necessary system dependencies
 RUN apk add --no-cache \

@@ -4,7 +4,7 @@ FROM node:20-alpine
 LABEL org.opencontainers.image.title="@petaio/mcp-rest-gateway"
 LABEL org.opencontainers.image.description="REST API to MCP Server Gateway for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
-LABEL org.opencontainers.image.source="https://github.com/petaio/mcp-rest-gateway"
+LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-rest-gateway"
 
 # Install necessary system dependencies
 RUN apk add --no-cache \
