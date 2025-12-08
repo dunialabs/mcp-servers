@@ -20,7 +20,7 @@
     "format:check": "prettier --check \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
     "prepare": "npm run build",
-    "docker:build": "./docker-build.sh"
+    "docker:build": "./build-docker.sh"
   },
   "keywords": [
     "mcp",
