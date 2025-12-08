@@ -1,0 +1,52 @@
+# Node modules (will be installed in container)
+node_modules/
+npm-debug.log*
+
+# Build output (will be built in container)
+dist/
+*.tsbuildinfo
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (should be passed as env vars)
+.env
+.env.*
+!.env.example
+
+# Documentation
+README.md
+RESEARCH.md
+CONTRIBUTING.md
+*.md
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+test/
+tests/
+coverage/
+vitest.config.ts
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Misc
+*.log
+.npm/
+.eslintcache

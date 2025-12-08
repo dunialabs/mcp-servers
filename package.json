@@ -1,0 +1,29 @@
+{
+  "name": "peta-mcp-servers",
+  "version": "1.0.0",
+  "description": "A collection of Model Context Protocol (MCP) servers",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix mcp-server-template install && npm --prefix mcp-google-drive install && npm --prefix mcp-postgres install && npm --prefix mcp-notion install && npm --prefix mcp-google-calendar install && npm --prefix mcp-figma install && npm --prefix mcp-rest-gateway install",
+    "build:all": "npm --prefix mcp-server-template run build && npm --prefix mcp-google-drive run build && npm --prefix mcp-postgres run build && npm --prefix mcp-notion run build && npm --prefix mcp-google-calendar run build && npm --prefix mcp-figma run build && npm --prefix mcp-rest-gateway run build",
+    "test:all": "npm --prefix mcp-server-template run --if-present test && npm --prefix mcp-google-drive run --if-present test && npm --prefix mcp-postgres run --if-present test && npm --prefix mcp-notion run --if-present test && npm --prefix mcp-google-calendar run --if-present test && npm --prefix mcp-figma run --if-present test && npm --prefix mcp-rest-gateway run --if-present test",
+    "clean": "npm --prefix mcp-server-template run clean && npm --prefix mcp-google-drive run clean && npm --prefix mcp-postgres run clean && npm --prefix mcp-notion run clean && npm --prefix mcp-google-calendar run clean && npm --prefix mcp-figma run clean && npm --prefix mcp-rest-gateway run clean"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dunialabs/mcp-servers.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "claude",
+    "servers",
+    "integrations"
+  ],
+  "author": "PETA Team",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
