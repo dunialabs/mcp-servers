@@ -4,6 +4,7 @@
  */
 
 import { request, Dispatcher } from 'undici';
+import { gunzipSync, inflateSync } from 'zlib';
 import { AuthConfig } from '../config/types.js';
 import { HTTPError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
@@ -107,6 +108,11 @@ export class HTTPClient {
         headers['Content-Type'] = 'application/json';
       }
 
+      // Add Accept-Encoding for gzip support
+      if (!headers['Accept-Encoding']) {
+        headers['Accept-Encoding'] = 'gzip, deflate';
+      }
+
       // Build request options
       const requestOptions: Dispatcher.RequestOptions = {
         method: method.toUpperCase() as Dispatcher.HttpMethod,
@@ -128,14 +134,29 @@ export class HTTPClient {
       const response = await request(url.origin, requestOptions);
       const duration = Date.now() - startTime;
 
+      // Get response body as buffer first
+      const rawBody = await response.body.arrayBuffer();
+      let bodyBuffer = Buffer.from(rawBody);
+
+      // Decompress if needed
+      const contentEncoding = response.headers['content-encoding'] as string;
+      if (contentEncoding) {
+        if (contentEncoding.includes('gzip')) {
+          bodyBuffer = gunzipSync(bodyBuffer);
+        } else if (contentEncoding.includes('deflate')) {
+          bodyBuffer = inflateSync(bodyBuffer);
+        }
+      }
+
       // Parse response body
       const contentType = response.headers['content-type'] as string || '';
       let body: any;
 
+      const bodyText = bodyBuffer.toString('utf-8');
       if (contentType.includes('application/json')) {
-        body = await response.body.json();
+        body = JSON.parse(bodyText);
       } else {
-        body = await response.body.text();
+        body = bodyText;
       }
 
       logger.info('[HTTP] Response', {
