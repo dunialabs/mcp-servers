@@ -6,12 +6,9 @@ LABEL org.opencontainers.image.description="REST API to MCP Server Gateway for P
 LABEL org.opencontainers.image.vendor="PETA Team"
 LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-rest-gateway"
 
-# Install necessary system dependencies
-RUN apk add --no-cache \
-    ca-certificates \
-    && rm -rf /var/cache/apk/*
-
 # Create app directory
+# Note: ca-certificates removed due to ARM64 build compatibility issues
+# node:20-alpine base image already includes sufficient certificates
 WORKDIR /app
 
 # Copy package files
