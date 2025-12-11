@@ -25,15 +25,59 @@ export class ToolGenerator {
   }
 
   /**
+   * Sanitize name by removing invalid characters
+   * Only keep: a-z, A-Z, 0-9, -, _
+   * This filters out Chinese characters, emojis, and other non-ASCII characters
+   */
+  private sanitizeName(name: string): string {
+    return name.replace(/[^a-zA-Z0-9-_]/g, '');
+  }
+
+  /**
    * Build internal tool mapping
    */
   private buildToolMap(): void {
+    const MAX_API_PREFIX_LENGTH = 8;
+    const MAX_TOOL_NAME_LENGTH = 64;
+
     for (const api of this.config.apis) {
+      // 1. Sanitize API name (remove Chinese, emojis, etc.)
+      let sanitizedApiName = this.sanitizeName(api.name);
+
+      // Validate sanitized API name
+      if (!sanitizedApiName) {
+        logger.warn('[ToolGenerator] API name contains no valid characters after sanitization, using "api"', {
+          originalName: api.name,
+        });
+        sanitizedApiName = 'api';
+      }
+
+      // 2. Truncate API name to max 8 characters
+      const apiPrefix = sanitizedApiName.length > MAX_API_PREFIX_LENGTH
+        ? sanitizedApiName.substring(0, MAX_API_PREFIX_LENGTH)
+        : sanitizedApiName;
+
       for (const tool of api.tools) {
-        if (this.toolMap.has(tool.name)) {
-          throw new Error(`Duplicate tool name: ${tool.name}`);
+        // 3. Generate tool name with API prefix in camelCase
+        // e.g., "qweather" + "getCurrentWeather" = "qweatherGetCurrentWeather"
+        let prefixedToolName = apiPrefix + tool.name.charAt(0).toUpperCase() + tool.name.slice(1);
+
+        // 4. Truncate final tool name to max 64 characters
+        if (prefixedToolName.length > MAX_TOOL_NAME_LENGTH) {
+          const originalName = prefixedToolName;
+          prefixedToolName = prefixedToolName.substring(0, MAX_TOOL_NAME_LENGTH);
+          logger.warn('[ToolGenerator] Tool name truncated to 64 characters', {
+            original: originalName,
+            truncated: prefixedToolName,
+          });
         }
-        this.toolMap.set(tool.name, { api, tool });
+
+        // 5. Check for duplicates
+        if (this.toolMap.has(prefixedToolName)) {
+          throw new Error(`Duplicate tool name: ${prefixedToolName}`);
+        }
+
+        this.toolMap.set(prefixedToolName, { api, tool });
       }
     }
 
