@@ -39,7 +39,10 @@ ARG VERSION=unknown
 
 # Install dumb-init for proper signal handling
 # dumb-init ensures SIGTERM/SIGINT are forwarded to Node.js process
-RUN apk add --no-cache dumb-init
+# Split into multiple RUN commands to avoid QEMU emulation issues on ARM64
+RUN apk update && \
+    apk add --no-cache dumb-init && \
+    rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
