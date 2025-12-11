@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-figma",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Figma MCP Server for PETA ecosystem with STDIO transport. Provides 17 powerful tools for file management, comments, design system, FigJam diagrams, and project operations.",
   "main": "dist/stdio.js",
   "type": "module",
