@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-postgres",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A production-ready PostgreSQL MCP Server with intelligent database management tools",
   "main": "dist/index.js",
   "type": "module",
