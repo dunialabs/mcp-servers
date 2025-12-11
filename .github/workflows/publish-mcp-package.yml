@@ -1,0 +1,173 @@
+name: Publish MCP Package
+
+# Trigger: Push tags matching pattern mcp-*-v*.*.*
+# Examples: mcp-rest-gateway-v1.0.1, mcp-postgres-v2.0.0
+on:
+  push:
+    tags:
+      - 'mcp-*-v*.*.*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # Required permissions for publishing
+    permissions:
+      contents: write     # Create GitHub releases
+      packages: write     # Publish to GitHub Container Registry
+
+    steps:
+      # Step 1: Checkout repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Extract project name and version from git tag
+      - name: Extract metadata from tag
+        id: meta
+        run: |
+          # Get full tag name (e.g., mcp-rest-gateway-v1.0.1)
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "Full tag: $TAG"
+
+          # Extract project name and version using regex
+          # Pattern: mcp-xxx-v1.2.3 → project: mcp-xxx, version: 1.2.3
+          if [[ $TAG =~ ^(mcp-[a-z-]+)-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            PROJECT="${BASH_REMATCH[1]}"
+            VERSION="${BASH_REMATCH[2]}"
+
+            echo "project=$PROJECT" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+            echo "✅ Parsed successfully:"
+            echo "   Project: $PROJECT"
+            echo "   Version: $VERSION"
+          else
+            echo "❌ Invalid tag format: $TAG"
+            echo "   Expected format: mcp-PROJECT-vX.Y.Z"
+            exit 1
+          fi
+
+      # Step 3: Verify project directory exists
+      - name: Validate project directory
+        run: |
+          PROJECT="${{ steps.meta.outputs.project }}"
+          if [ ! -d "$PROJECT" ]; then
+            echo "❌ Project directory not found: $PROJECT"
+            exit 1
+          fi
+          echo "✅ Found project directory: $PROJECT"
+
+      # Step 4: Verify package.json version matches tag version
+      - name: Validate version in package.json
+        run: |
+          PROJECT="${{ steps.meta.outputs.project }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          cd "$PROJECT"
+
+          # Read version from package.json
+          PKG_VERSION=$(node -p "require('./package.json').version")
+
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "   Tag version: $VERSION"
+            echo "   package.json version: $PKG_VERSION"
+            echo ""
+            echo "Please update $PROJECT/package.json version to $VERSION"
+            exit 1
+          fi
+
+          echo "✅ Version matched: $VERSION"
+
+      # Step 5: Install dependencies
+      - name: Install dependencies
+        working-directory: ${{ steps.meta.outputs.project }}
+        run: npm ci
+
+      # Step 6: Build TypeScript project
+      - name: Build project
+        working-directory: ${{ steps.meta.outputs.project }}
+        run: npm run build
+
+      # Step 7: Setup Docker Buildx for multi-platform builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 8: Login to GitHub Container Registry
+      # Uses built-in GITHUB_TOKEN, no secrets configuration needed
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 9: Build and push multi-platform Docker images
+      - name: Build and push Docker images
+        working-directory: ${{ steps.meta.outputs.project }}
+        env:
+          PROJECT: ${{ steps.meta.outputs.project }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          # Remove 'mcp-' prefix for GHCR image name
+          # Example: mcp-rest-gateway → rest-gateway
+          IMAGE_NAME=${PROJECT#mcp-}
+
+          echo "🚀 Building and pushing Docker images..."
+          echo "   Project: $PROJECT"
+          echo "   Version: $VERSION"
+          echo "   GHCR: ghcr.io/${{ github.repository_owner }}/mcp-servers/$IMAGE_NAME:$VERSION"
+
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag ghcr.io/${{ github.repository_owner }}/mcp-servers/$IMAGE_NAME:$VERSION \
+            --tag ghcr.io/${{ github.repository_owner }}/mcp-servers/$IMAGE_NAME:latest \
+            --push \
+            .
+
+          echo "✅ Docker images published to GHCR!"
+
+      # Step 10: Create GitHub Release with auto-generated notes
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.project }} v${{ steps.meta.outputs.version }}
+          body: |
+            ## ${{ steps.meta.outputs.project }} v${{ steps.meta.outputs.version }}
+
+            ### 📦 Docker Image
+
+            **GitHub Container Registry:**
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.meta.outputs.project }}:${{ steps.meta.outputs.version }}
+            docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.meta.outputs.project }}:latest
+            ```
+
+            ### 📝 Changes
+
+            See commits for details.
+
+            ---
+
+            🤖 Auto-generated by GitHub Actions
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 11: Output summary to GitHub Actions UI
+      - name: Summary
+        run: |
+          echo "### ✅ Published Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** ${{ steps.meta.outputs.project }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Docker Image" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**GHCR:**" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.meta.outputs.project }}:${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
