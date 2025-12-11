@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-rest-gateway",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "REST API to MCP Server Gateway - Convert REST APIs to MCP tools through configuration",
   "main": "dist/stdio.js",
   "type": "module",
