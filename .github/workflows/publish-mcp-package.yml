@@ -128,7 +128,17 @@ jobs:
 
           echo "✅ Docker images published to GHCR!"
 
-      # Step 10: Create GitHub Release with auto-generated notes
+      # Step 10: Extract image name (remove mcp- prefix for release notes)
+      - name: Extract image name
+        id: image
+        run: |
+          PROJECT="${{ steps.meta.outputs.project }}"
+          # Remove 'mcp-' prefix: mcp-google-drive → google-drive
+          IMAGE_NAME=${PROJECT#mcp-}
+          echo "name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Image name: $IMAGE_NAME"
+
+      # Step 11: Create GitHub Release with auto-generated notes
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -141,8 +151,8 @@ jobs:
 
             **GitHub Container Registry:**
             ```bash
-            docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.meta.outputs.project }}:${{ steps.meta.outputs.version }}
-            docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.meta.outputs.project }}:latest
+            docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.image.outputs.name }}:${{ steps.meta.outputs.version }}
+            docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.image.outputs.name }}:latest
             ```
 
             ### 📝 Changes
@@ -157,7 +167,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 11: Output summary to GitHub Actions UI
+      # Step 12: Output summary to GitHub Actions UI
       - name: Summary
         run: |
           echo "### ✅ Published Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
@@ -169,5 +179,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**GHCR:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.meta.outputs.project }}:${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository_owner }}/mcp-servers/${{ steps.image.outputs.name }}:${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
