@@ -37,12 +37,8 @@ FROM node:20-alpine
 # Build argument for version (passed from build-docker.sh)
 ARG VERSION=unknown
 
-# Install dumb-init for proper signal handling
-# dumb-init ensures SIGTERM/SIGINT are forwarded to Node.js process
-# Split into multiple RUN commands to avoid QEMU emulation issues on ARM64
-RUN apk update && \
-    apk add --no-cache dumb-init && \
-    rm -rf /var/cache/apk/*
+# Note: Removed dumb-init due to ARM64 build compatibility issues
+# Node.js handles signals properly in Docker when using exec form of CMD
 
 WORKDIR /app
 
@@ -86,12 +82,8 @@ LABEL org.opencontainers.image.title="PostgreSQL MCP Server" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.licenses="MIT"
 
-# Use dumb-init to handle signals properly
-# CRITICAL: Using exec form (array) ensures proper signal forwarding
-# dumb-init forwards SIGTERM/SIGINT to the node process
-ENTRYPOINT ["dumb-init", "--"]
-
 # Run the application via docker-entrypoint.sh
 # The entrypoint script handles localhost remapping and then execs node
 # Use exec form to ensure proper signal forwarding
+# Node.js in exec form handles SIGTERM/SIGINT properly without dumb-init
 CMD ["./docker-entrypoint.sh"]
