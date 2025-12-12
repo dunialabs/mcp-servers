@@ -80,7 +80,9 @@ LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/postgres" \
       org.opencontainers.image.description="Production-ready PostgreSQL MCP Server with proper Docker lifecycle management" \
       org.opencontainers.image.vendor="PETA Team" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers" \
+      org.opencontainers.image.documentation="https://github.com/dunialabs/mcp-servers/tree/main/mcp-postgres"
 
 # Run the application via docker-entrypoint.sh
 # The entrypoint script handles localhost remapping and then execs node

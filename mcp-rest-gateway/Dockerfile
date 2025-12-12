@@ -4,7 +4,8 @@ FROM node:20-alpine
 LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/rest-gateway"
 LABEL org.opencontainers.image.description="REST API to MCP Server Gateway for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
-LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-rest-gateway"
+LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers"
+LABEL org.opencontainers.image.documentation="https://github.com/dunialabs/mcp-servers/tree/main/mcp-rest-gateway"
 
 # Create app directory
 # Note: ca-certificates removed due to ARM64 build compatibility issues

@@ -4,7 +4,8 @@ FROM node:18-alpine
 LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/notion"
 LABEL org.opencontainers.image.description="Notion MCP Server for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
-LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-notion"
+LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers"
+LABEL org.opencontainers.image.documentation="https://github.com/dunialabs/mcp-servers/tree/main/mcp-notion"
 
 # Install necessary system dependencies
 RUN apk add --no-cache \
