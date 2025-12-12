@@ -34,16 +34,16 @@ Model Context Protocol (MCP) server for Figma integration. Built for PETA Desk i
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Pull from Docker Hub
-docker pull petaio/mcp-figma:latest
+# Pull from GitHub Container Registry (GHCR)
+docker pull ghcr.io/dunialabs/mcp-servers/figma:latest
 
 # Run with your Figma OAuth access token
 export accessToken='figd_xxx...'
-docker run -i --rm -e accessToken petaio/mcp-figma:latest
+docker run -i --rm -e accessToken ghcr.io/dunialabs/mcp-servers/figma:latest
 
 # Or build locally
 npm run build
-docker build -t petaio/mcp-figma:latest .
+docker build -t ghcr.io/dunialabs/mcp-servers/figma:latest .
 ```
 
 ### Option 2: Direct Node.js
@@ -71,7 +71,7 @@ No manual configuration needed!
 ```json
 {
   "command": "docker",
-  "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "petaio/mcp-figma:latest"],
+  "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/figma:latest"],
   "env": {
     "accessToken": "figd_xxx..."
   }
@@ -429,7 +429,7 @@ npm run lint
 # Multi-platform build (amd64, arm64)
 ./build-docker.sh multi
 
-# Build and push to Docker Hub
+# Build and push to GHCR
 ./build-docker.sh push
 
 # Clean up builders

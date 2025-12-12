@@ -1,7 +1,7 @@
-# @petaio/mcp-server-template - Docker image for STDIO mode
+# ghcr.io/dunialabs/mcp-servers/server-template - Docker image for STDIO mode
 FROM node:20-alpine
 
-LABEL org.opencontainers.image.title="@petaio/mcp-server-template"
+LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/server-template"
 LABEL org.opencontainers.image.description="MCP Server Template for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
 LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-server-template"

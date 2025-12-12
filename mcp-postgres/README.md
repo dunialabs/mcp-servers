@@ -36,7 +36,7 @@ PostgreSQL MCP Server for database management.
 - [x] Basic unit tests (errors, logger - 100% coverage)
 - [ ] Comprehensive unit tests (tools, database connection)
 - [ ] Integration tests
-- [x] Publish to Docker Hub
+- [x] Publish to GitHub Container Registry (GHCR)
 - [ ] Additional tools (index management, table management, data export)
 
 ## 📁 Project Structure
@@ -144,13 +144,13 @@ The PostgreSQL driver (`pg`) uses complex generic types for query results. TypeS
 
 ```bash
 # Build image
-docker build -t petaio/mcp-postgres:latest .
+docker build -t ghcr.io/dunialabs/mcp-servers/postgres:latest .
 
 # Run
 docker run -i --rm \
   -e POSTGRES_URL="postgresql://user:password@localhost:5432/database" \
   -e ACCESS_MODE="readonly" \
-  petaio/mcp-postgres:latest
+  ghcr.io/dunialabs/mcp-servers/postgres:latest
 ```
 
 ## 📝 Claude Desktop Configuration
@@ -175,7 +175,7 @@ Simply use `localhost` in your connection string - no platform-specific configur
         "--pull=always",
         "-e", "POSTGRES_URL",
         "-e", "ACCESS_MODE",
-        "petaio/mcp-postgres:latest"
+        "ghcr.io/dunialabs/mcp-servers/postgres:latest"
       ],
       "env": {
         "POSTGRES_URL": "postgresql://user:password@localhost:5432/database",
@@ -188,7 +188,7 @@ Simply use `localhost` in your connection string - no platform-specific configur
 
 **Notes**:
 - The Docker image will automatically remap `localhost` to work from inside the container. You can use the same configuration on MacOS, Windows, and Linux without any changes!
-- `--pull=always` ensures you always use the latest image from Docker Hub. For local development with a locally built image, remove this flag.
+- `--pull=always` ensures you always use the latest image from GHCR. For local development with a locally built image, remove this flag.
 
 ### Local Development (Node.js)
 
@@ -314,7 +314,7 @@ npm start
 docker run -i --rm \
   -e POSTGRES_URL="postgresql://user:password@localhost:5432/db" \
   -e ACCESS_MODE="readonly" \
-  petaio/mcp-postgres:latest
+  ghcr.io/dunialabs/mcp-servers/postgres:latest
 ```
 
 **Note**: `localhost` is automatically remapped to work in Docker:

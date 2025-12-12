@@ -37,16 +37,16 @@ Model Context Protocol (MCP) server for Notion integration. Built for PETA Desk 
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Pull from Docker Hub
-docker pull petaio/mcp-notion:latest
+# Pull from GitHub Container Registry (GHCR)
+docker pull ghcr.io/dunialabs/mcp-servers/notion:latest
 
 # Run with your Notion token
 export notionToken='ntn_xxx...'
-docker run -i --rm -e notionToken petaio/mcp-notion:latest
+docker run -i --rm -e notionToken ghcr.io/dunialabs/mcp-servers/notion:latest
 
 # Or build locally
 npm run build
-docker build -t petaio/mcp-notion:latest .
+docker build -t ghcr.io/dunialabs/mcp-servers/notion:latest .
 ```
 
 ### Option 2: Direct Node.js
@@ -74,7 +74,7 @@ No manual configuration needed!
 ```json
 {
   "command": "docker",
-  "args": ["run", "--pull=always", "-i", "--rm", "-e", "notionToken", "petaio/mcp-notion:latest"],
+  "args": ["run", "--pull=always", "-i", "--rm", "-e", "notionToken", "ghcr.io/dunialabs/mcp-servers/notion:latest"],
   "env": {
     "notionToken": "ntn_xxx..."
   }
@@ -155,7 +155,7 @@ Edit the Claude Desktop configuration file:
         "--rm",
         "-e",
         "notionToken",
-        "petaio/mcp-notion:latest"
+        "ghcr.io/dunialabs/mcp-servers/notion:latest"
       ],
       "env": {
         "notionToken": "YOUR_NOTION_TOKEN"

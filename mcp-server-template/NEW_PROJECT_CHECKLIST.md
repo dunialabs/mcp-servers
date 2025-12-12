@@ -49,12 +49,12 @@ Update Docker image name:
 
 ```bash
 # Configuration - CUSTOMIZE THESE FOR YOUR PROJECT
-IMAGE_NAME="your-org/mcp-your-server"  // ← Change to your Docker Hub image name
+IMAGE_NAME="ghcr.io/dunialabs/mcp-servers/your-server"  // ← Change to your GHCR image name
 ```
 
 **Example:**
-- `petaio/mcp-figma` for Figma MCP Server
-- `petaio/mcp-notion` for Notion MCP Server
+- `ghcr.io/dunialabs/mcp-servers/figma` for Figma MCP Server
+- `ghcr.io/dunialabs/mcp-servers/notion` for Notion MCP Server
 
 ### 3. src/stdio.ts
 

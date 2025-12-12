@@ -51,16 +51,16 @@ Model Context Protocol (MCP) server for Google Drive integration. Built for PETA
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Pull from Docker Hub
-docker pull petaio/mcp-google-drive:latest
+# Pull from GitHub Container Registry (GHCR)
+docker pull ghcr.io/dunialabs/mcp-servers/google-drive:latest
 
 # Run with your Google OAuth access token
 export accessToken='ya29.xxx...'
-docker run -i --rm -e accessToken petaio/mcp-google-drive:latest
+docker run -i --rm -e accessToken ghcr.io/dunialabs/mcp-servers/google-drive:latest
 
 # Or build locally
 npm run build
-docker build -t petaio/mcp-google-drive:latest .
+docker build -t ghcr.io/dunialabs/mcp-servers/google-drive:latest .
 ```
 
 See [DOCKER.md](./DOCKER.md) for detailed Docker usage.
@@ -90,7 +90,7 @@ No manual configuration needed!
 ```json
 {
   "command": "docker",
-  "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "petaio/mcp-google-drive:latest"],
+  "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/google-drive:latest"],
   "env": {
     "accessToken": "ya29.xxx..."
   }

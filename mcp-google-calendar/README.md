@@ -25,16 +25,16 @@ Model Context Protocol (MCP) server for Google Calendar integration. Built for P
 ### Option 1: Docker (Recommended)
 
 ```bash
-# Pull from Docker Hub
-docker pull petaio/mcp-google-calendar:latest
+# Pull from GitHub Container Registry (GHCR)
+docker pull ghcr.io/dunialabs/mcp-servers/google-calendar:latest
 
 # Run with your Google OAuth access token
 export accessToken='ya29.xxx...'
-docker run -i --rm -e accessToken petaio/mcp-google-calendar:latest
+docker run -i --rm -e accessToken ghcr.io/dunialabs/mcp-servers/google-calendar:latest
 
 # Or build locally
 npm run build
-docker build -t petaio/mcp-google-calendar:latest .
+docker build -t ghcr.io/dunialabs/mcp-servers/google-calendar:latest .
 ```
 
 ### Option 2: Direct Node.js
@@ -62,7 +62,7 @@ No manual configuration needed!
 ```json
 {
   "command": "docker",
-  "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "petaio/mcp-google-calendar:latest"],
+  "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/google-calendar:latest"],
   "env": {
     "accessToken": "ya29.xxx..."
   }
@@ -194,7 +194,7 @@ npm run lint
 # Multi-platform build (amd64, arm64)
 ./build-docker.sh multi
 
-# Build and push to Docker Hub
+# Build and push to GHCR
 ./build-docker.sh push
 
 # Clean up builders

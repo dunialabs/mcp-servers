@@ -1,7 +1,7 @@
-# @petaio/mcp-google-drive - Docker image for STDIO mode
+# ghcr.io/dunialabs/mcp-servers/google-drive - Docker image for STDIO mode
 FROM node:18-alpine
 
-LABEL org.opencontainers.image.title="@petaio/mcp-google-drive"
+LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/google-drive"
 LABEL org.opencontainers.image.description="Google Drive MCP Server for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
 LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-google-drive"

@@ -1,14 +1,14 @@
 # Docker Deployment Guide
 
-**@petaio/mcp-google-drive** - Docker deployment for STDIO mode
+**@ghcr.io/dunialabs/mcp-servers/google-drive** - Docker deployment for STDIO mode
 
 ## Quick Start
 
 ### 1. Pull the Docker Image (Recommended)
 
 ```bash
-# Pull from Docker Hub (supports amd64 and arm64)
-docker pull petaio/mcp-google-drive:latest
+# Pull from GitHub Container Registry (GHCR) (supports amd64 and arm64)
+docker pull ghcr.io/dunialabs/mcp-servers/google-drive:latest
 ```
 
 **Or build locally for single architecture:**
@@ -18,7 +18,7 @@ docker pull petaio/mcp-google-drive:latest
 npm run build
 
 # Build for your current architecture only
-docker build -t petaio/mcp-google-drive:latest .
+docker build -t ghcr.io/dunialabs/mcp-servers/google-drive:latest .
 ```
 
 **For multi-architecture build (maintainers only):**
@@ -27,7 +27,7 @@ docker build -t petaio/mcp-google-drive:latest .
 npm run build
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t petaio/mcp-google-drive:latest \
+  -t ghcr.io/dunialabs/mcp-servers/google-drive:latest \
   --push \
   .
 ```
@@ -57,7 +57,7 @@ export accessToken='ya29.xxx...'
     "-e", "accessToken",
     "-e", "HTTP_PROXY",
     "-e", "HTTPS_PROXY",
-    "petaio/mcp-google-drive:latest"
+    "ghcr.io/dunialabs/mcp-servers/google-drive:latest"
   ],
   "env": {
     "accessToken": "ya29.xxx..."
@@ -98,14 +98,14 @@ The Docker container accepts these environment variables:
 
 ## Docker Commands
 
-### Pull from Docker Hub (Recommended)
+### Pull from GitHub Container Registry (GHCR) (Recommended)
 
 ```bash
 # Pull the latest version (supports both amd64 and arm64)
-docker pull petaio/mcp-google-drive:latest
+docker pull ghcr.io/dunialabs/mcp-servers/google-drive:latest
 
 # Or pull a specific version
-docker pull petaio/mcp-google-drive:1.0.0
+docker pull ghcr.io/dunialabs/mcp-servers/google-drive:1.0.0
 ```
 
 The image automatically supports multiple architectures:
@@ -123,8 +123,8 @@ npm run build
 # Build and push multi-architecture image
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t petaio/mcp-google-drive:latest \
-  -t petaio/mcp-google-drive:1.0.0 \
+  -t ghcr.io/dunialabs/mcp-servers/google-drive:latest \
+  -t ghcr.io/dunialabs/mcp-servers/google-drive:1.0.0 \
   --push \
   .
 ```
@@ -197,30 +197,30 @@ Expected response:
 ### List Images
 
 ```bash
-# List all petaio/mcp-google-drive images
-docker images petaio/mcp-google-drive
+# List all ghcr.io/dunialabs/mcp-servers/google-drive images
+docker images ghcr.io/dunialabs/mcp-servers/google-drive
 ```
 
 ### Remove Image
 
 ```bash
 # Remove specific version
-docker rmi petaio/mcp-google-drive:1.0.0
+docker rmi ghcr.io/dunialabs/mcp-servers/google-drive:1.0.0
 
 # Remove all versions
-docker rmi $(docker images petaio/mcp-google-drive -q)
+docker rmi $(docker images ghcr.io/dunialabs/mcp-servers/google-drive -q)
 ```
 
 ### Inspect Multi-Architecture Manifest
 
 ```bash
 # View supported architectures
-docker manifest inspect petaio/mcp-google-drive:latest
+docker manifest inspect ghcr.io/dunialabs/mcp-servers/google-drive:latest
 ```
 
-## Publishing to Docker Hub (For Maintainers)
+## Publishing to GitHub Container Registry (GHCR) (For Maintainers)
 
-### 1. Login to Docker Hub
+### 1. Login to GitHub Container Registry (GHCR)
 
 ```bash
 docker login
@@ -235,8 +235,8 @@ npm run build
 # Build and push for multiple architectures
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t petaio/mcp-google-drive:latest \
-  -t petaio/mcp-google-drive:1.0.0 \
+  -t ghcr.io/dunialabs/mcp-servers/google-drive:latest \
+  -t ghcr.io/dunialabs/mcp-servers/google-drive:1.0.0 \
   --push \
   .
 ```
@@ -250,7 +250,7 @@ docker buildx build \
 
 ```bash
 # Check that both architectures are available
-docker manifest inspect petaio/mcp-google-drive:latest
+docker manifest inspect ghcr.io/dunialabs/mcp-servers/google-drive:latest
 ```
 
 ## Troubleshooting

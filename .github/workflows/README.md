@@ -4,6 +4,22 @@
 
 This directory contains GitHub Actions workflows for automating the build and publishing process of MCP packages.
 
+### GHCR image naming (per project README)
+
+Each MCP package publishes multi-arch images to GitHub Container Registry using the following convention:
+
+| Package            | GHCR Image                                             |
+|--------------------|--------------------------------------------------------|
+| mcp-google-drive   | `ghcr.io/dunialabs/mcp-servers/google-drive`           |
+| mcp-google-calendar| `ghcr.io/dunialabs/mcp-servers/google-calendar`        |
+| mcp-notion         | `ghcr.io/dunialabs/mcp-servers/notion`                 |
+| mcp-figma          | `ghcr.io/dunialabs/mcp-servers/figma`                  |
+| mcp-postgres       | `ghcr.io/dunialabs/mcp-servers/postgres`               |
+| mcp-rest-gateway   | `ghcr.io/dunialabs/mcp-servers/rest-gateway`           |
+| mcp-server-template| `ghcr.io/dunialabs/mcp-servers/server-template`        |
+
+These match the image references documented in each project’s README. The workflow described below automatically tags both `:VERSION` and `:latest` variants for the appropriate image.
+
 ## Workflows
 
 ### `publish-mcp-package.yml`

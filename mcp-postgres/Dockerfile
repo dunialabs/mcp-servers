@@ -76,7 +76,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "process.exit(0)" || exit 1
 
 # Labels for metadata (version automatically read from package.json)
-LABEL org.opencontainers.image.title="PostgreSQL MCP Server" \
+LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/postgres" \
       org.opencontainers.image.description="Production-ready PostgreSQL MCP Server with proper Docker lifecycle management" \
       org.opencontainers.image.vendor="PETA Team" \
       org.opencontainers.image.version="${VERSION}" \

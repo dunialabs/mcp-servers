@@ -193,6 +193,34 @@ npm run build
 npm start
 ```
 
+## Docker Images
+
+All MCP servers are available as Docker images on GitHub Container Registry (GHCR):
+
+- 🐳 **Multi-platform support**: linux/amd64 and linux/arm64 (Apple Silicon compatible)
+- 📦 **View all packages**: https://github.com/dunialabs/mcp-servers/packages
+
+### Available Images
+
+| Server | Image | Latest Version |
+|--------|-------|----------------|
+| Google Drive | `ghcr.io/dunialabs/mcp-servers/google-drive` | v1.1.4 |
+| PostgreSQL | `ghcr.io/dunialabs/mcp-servers/postgres` | v1.1.2 |
+| Notion | `ghcr.io/dunialabs/mcp-servers/notion` | v1.1.1 |
+| Figma | `ghcr.io/dunialabs/mcp-servers/figma` | v1.0.1 |
+| Google Calendar | `ghcr.io/dunialabs/mcp-servers/google-calendar` | v1.0.1 |
+| REST Gateway | `ghcr.io/dunialabs/mcp-servers/rest-gateway` | v1.0.1 |
+
+### Pull Images
+
+```bash
+# Pull specific version
+docker pull ghcr.io/dunialabs/mcp-servers/google-drive:1.1.4
+
+# Pull latest version
+docker pull ghcr.io/dunialabs/mcp-servers/google-drive:latest
+```
+
 ## Using with Claude Desktop
 
 To use these MCP servers with Claude Desktop, add them to your Claude configuration file:
@@ -201,9 +229,9 @@ To use these MCP servers with Claude Desktop, add them to your Claude configurat
 
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker via GHCR (Recommended)
 
-Docker configuration provides isolation and easier deployment:
+Using GitHub Container Registry images provides better reliability and automatic multi-platform support:
 
 ```json
 {
@@ -219,7 +247,7 @@ Docker configuration provides isolation and easier deployment:
         "POSTGRES_URL",
         "-e",
         "ACCESS_MODE",
-        "petaio/mcp-postgres:latest"
+        "ghcr.io/dunialabs/mcp-servers/postgres:latest"
       ],
       "env": {
         "POSTGRES_URL": "postgresql://user:password@localhost:5432/dbname",
@@ -228,35 +256,35 @@ Docker configuration provides isolation and easier deployment:
     },
     "google-drive": {
       "command": "docker",
-      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "petaio/mcp-google-drive:latest"],
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/google-drive:latest"],
       "env": {
         "accessToken": "ya29.xxx..."
       }
     },
     "notion": {
       "command": "docker",
-      "args": ["run", "--pull=always", "-i", "--rm", "-e", "notionToken", "petaio/mcp-notion:latest"],
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "notionToken", "ghcr.io/dunialabs/mcp-servers/notion:latest"],
       "env": {
         "notionToken": "ntn_xxx..."
       }
     },
     "google-calendar": {
       "command": "docker",
-      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "petaio/mcp-google-calendar:latest"],
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/google-calendar:latest"],
       "env": {
         "accessToken": "ya29.xxx..."
       }
     },
     "figma": {
       "command": "docker",
-      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "petaio/mcp-figma:latest"],
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/figma:latest"],
       "env": {
         "accessToken": "figd_xxx..."
       }
     },
     "rest-gateway": {
       "command": "docker",
-      "args": ["run", "--pull=always", "-i", "--rm", "-e", "GATEWAY_CONFIG", "petaio/mcp-rest-gateway:latest"],
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "GATEWAY_CONFIG", "ghcr.io/dunialabs/mcp-servers/rest-gateway:latest"],
       "env": {
         "GATEWAY_CONFIG": "{\"apis\":[{\"name\":\"example-api\",\"baseUrl\":\"https://api.example.com\",\"auth\":{\"type\":\"bearer\",\"token\":\"${API_KEY}\"},\"tools\":[...]}]}"
       }

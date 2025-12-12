@@ -4,7 +4,7 @@
 
 set -e
 
-IMAGE_NAME="petaio/mcp-postgres"
+IMAGE_NAME="ghcr.io/dunialabs/mcp-servers/postgres"
 
 # Read version from package.json (single source of truth)
 VERSION=$(node -p "require('./package.json').version")
@@ -38,7 +38,7 @@ if [ "$1" = "multi" ]; then
     echo ""
     echo "✅ Multi-platform build complete (not loaded locally)"
     echo ""
-    echo "📤 To push to Docker Hub:"
+    echo "📤 To push to GitHub Container Registry:"
     echo "  docker buildx build --platform linux/amd64,linux/arm64 \\"
     echo "    --tag ${IMAGE_NAME}:${VERSION} --tag ${IMAGE_NAME}:latest --push ."
     
@@ -62,7 +62,7 @@ elif [ "$1" = "push" ]; then
         .
     
     echo ""
-    echo "✅ Pushed to Docker Hub!"
+    echo "✅ Pushed to GitHub Container Registry!"
     echo "  - ${IMAGE_NAME}:${VERSION}"
     echo "  - ${IMAGE_NAME}:latest"
     
@@ -98,4 +98,4 @@ echo ""
 echo "Usage:"
 echo "  ./build-docker.sh          # Build for current platform only (fast)"
 echo "  ./build-docker.sh multi    # Build for multiple platforms (amd64, arm64)"
-echo "  ./build-docker.sh push     # Build multi-platform and push to Docker Hub"
+echo "  ./build-docker.sh push     # Build multi-platform and push to GHCR"

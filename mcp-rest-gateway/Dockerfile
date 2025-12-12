@@ -1,7 +1,7 @@
-# @petaio/mcp-rest-gateway - Docker image for STDIO mode
+# ghcr.io/dunialabs/mcp-servers/rest-gateway - Docker image for STDIO mode
 FROM node:20-alpine
 
-LABEL org.opencontainers.image.title="@petaio/mcp-rest-gateway"
+LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/rest-gateway"
 LABEL org.opencontainers.image.description="REST API to MCP Server Gateway for PETA ecosystem"
 LABEL org.opencontainers.image.vendor="PETA Team"
 LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers/tree/main/mcp-rest-gateway"
