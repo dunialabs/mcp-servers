@@ -6,18 +6,14 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and source code
 COPY package*.json ./
 COPY tsconfig.json ./
-
-# Install dependencies (including dev dependencies for build)
-RUN npm ci
-
-# Copy source code
 COPY src/ ./src/
 
-# Build TypeScript
-RUN npm run build
+# Install dependencies (including dev dependencies for build)
+# The prepare script will automatically run npm run build
+RUN npm ci
 
 # Remove dev dependencies
 RUN npm prune --production
