@@ -2,7 +2,7 @@
 # Production-ready container for GitHub integration
 
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN npm ci
 RUN npm prune --production
 
 # Production stage
-FROM node:18-alpine AS runtime
+FROM node:20-alpine AS runtime
 
 # Set working directory
 WORKDIR /app
