@@ -146,6 +146,31 @@ A configuration-driven gateway that converts any REST API into MCP tools, enabli
 
 ---
 
+### 8. MCP GitHub Server
+**Directory:** `mcp-github/`
+
+An MCP server for GitHub integration, enabling AI assistants to interact with GitHub repositories, issues, pull requests, and more.
+
+**Features:**
+
+- 39 tools for GitHub operations
+- Repository management (create, read, update, delete, search)
+- Issue management (create, read, update, delete, comment, label)
+- Pull request operations (create, read, update, merge, review)
+- Commit and branch management
+- User and organization operations
+- Team management
+- File operations
+- Search capabilities
+- STDIO transport
+- Docker support (amd64/arm64)
+- Token-based authentication
+- Runtime token refresh
+
+[View Documentation →](./mcp-github/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -157,6 +182,7 @@ peta-mcp-servers/
 ├── mcp-google-calendar/     # Google Calendar integration
 ├── mcp-figma/               # Figma design integration
 ├── mcp-rest-gateway/        # REST API to MCP gateway
+├── mcp-github/              # GitHub integration
 └── README.md                # This file
 ```
 
@@ -210,6 +236,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Figma | `ghcr.io/dunialabs/mcp-servers/figma` | v1.0.1 |
 | Google Calendar | `ghcr.io/dunialabs/mcp-servers/google-calendar` | v1.0.1 |
 | REST Gateway | `ghcr.io/dunialabs/mcp-servers/rest-gateway` | v1.0.1 |
+| GitHub | `ghcr.io/dunialabs/mcp-servers/github` | v1.0.0 |
 
 ### Pull Images
 
@@ -288,6 +315,13 @@ Using GitHub Container Registry images provides better reliability and automatic
       "env": {
         "GATEWAY_CONFIG": "{\"apis\":[{\"name\":\"example-api\",\"baseUrl\":\"https://api.example.com\",\"auth\":{\"type\":\"bearer\",\"token\":\"${API_KEY}\"},\"tools\":[...]}]}"
       }
+    },
+    "github": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/github:latest"],
+      "env": {
+        "accessToken": "ghp_xxx..."
+      }
     }
   }
 }
@@ -341,6 +375,13 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-rest-gateway/dist/stdio.js"],
       "env": {
         "GATEWAY_CONFIG": "{\"apis\":[{\"name\":\"example-api\",\"baseUrl\":\"https://api.example.com\",\"auth\":{\"type\":\"bearer\",\"token\":\"${API_KEY}\"},\"tools\":[...]}]}"
+      }
+    },
+    "github": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-github/dist/stdio.js"],
+      "env": {
+        "accessToken": "ghp_xxx..."
       }
     }
   }
