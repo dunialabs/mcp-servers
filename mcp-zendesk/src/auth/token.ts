@@ -103,11 +103,12 @@ export function getAuthHeader(): string {
     case AuthMode.OAUTH:
       return `Bearer ${creds.accessToken}`;
 
-    case AuthMode.API_TOKEN:
+    case AuthMode.API_TOKEN: {
       // Zendesk API Token uses Basic Auth format: email/token:api_token
       const credentials = `${creds.email}/token:${creds.apiToken}`;
       const encoded = Buffer.from(credentials).toString('base64');
       return `Basic ${encoded}`;
+    }
 
     default:
       throw new Error(`Unknown auth mode: ${creds.mode}`);
