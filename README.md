@@ -14,23 +14,7 @@ When used with Peta Core, you get:
 
 ## Available Servers
 
-### 1. MCP Server Template
-**Directory:** `mcp-server-template/`
-
-A template for creating new MCP servers. Use this as a starting point for building your own MCP integrations.
-
-**Features:**
-
-- TypeScript-based structure
-- Testing infrastructure
-- Best practices and guidelines
-- Documentation and examples
-
-[View Documentation →](./mcp-server-template/README.md)
-
----
-
-### 2. MCP Google Drive Server
+### 1. MCP Google Drive Server
 **Directory:** `mcp-google-drive/`
 
 An MCP server that provides integration with Google Drive, enabling AI assistants to interact with your Google Drive files and folders.
@@ -47,7 +31,7 @@ An MCP server that provides integration with Google Drive, enabling AI assistant
 
 ---
 
-### 3. MCP PostgreSQL Server
+### 2. MCP PostgreSQL Server
 **Directory:** `mcp-postgres/`
 
 An MCP server for PostgreSQL database integration, allowing AI assistants to query and interact with PostgreSQL databases safely.
@@ -64,7 +48,7 @@ An MCP server for PostgreSQL database integration, allowing AI assistants to que
 
 ---
 
-### 4. MCP Notion Server
+### 3. MCP Notion Server
 **Directory:** `mcp-notion/`
 
 An MCP server for Notion integration, enabling AI assistants to interact with Notion pages, databases, blocks, and users.
@@ -85,7 +69,7 @@ An MCP server for Notion integration, enabling AI assistants to interact with No
 
 ---
 
-### 5. MCP Google Calendar Server
+### 4. MCP Google Calendar Server
 **Directory:** `mcp-google-calendar/`
 
 An MCP server for Google Calendar integration, enabling AI assistants to manage calendars and events.
@@ -105,7 +89,7 @@ An MCP server for Google Calendar integration, enabling AI assistants to manage 
 
 ---
 
-### 6. MCP Figma Server
+### 5. MCP Figma Server
 **Directory:** `mcp-figma/`
 
 An MCP server for Figma integration, enabling AI assistants to interact with Figma files, designs, and collaboration features.
@@ -125,7 +109,7 @@ An MCP server for Figma integration, enabling AI assistants to interact with Fig
 
 ---
 
-### 7. MCP REST Gateway
+### 6. MCP REST Gateway
 **Directory:** `mcp-rest-gateway/`
 
 A configuration-driven gateway that converts any REST API into MCP tools, enabling AI assistants to interact with RESTful services without writing code.
@@ -146,7 +130,7 @@ A configuration-driven gateway that converts any REST API into MCP tools, enabli
 
 ---
 
-### 8. MCP GitHub Server
+### 7. MCP GitHub Server
 **Directory:** `mcp-github/`
 
 An MCP server for GitHub integration, enabling AI assistants to interact with GitHub repositories, issues, pull requests, and more.
@@ -171,11 +155,31 @@ An MCP server for GitHub integration, enabling AI assistants to interact with Gi
 
 ---
 
+### 8. MCP Zendesk Server
+**Directory:** `mcp-zendesk/`
+
+An MCP server for Zendesk integration, enabling AI assistants to manage tickets, users, and organizations.
+
+**Features:**
+
+- 18 tools for Zendesk operations
+- Ticket management (list, get, create, update, delete, comments, search)
+- User management (list, get, create, update, delete)
+- Organization management (list, get, create, update, delete)
+- Hybrid authentication (OAuth token + API token)
+- Token refresh via MCP notifications
+- STDIO transport
+- Docker support (amd64/arm64)
+- API-compliant implementation
+
+[View Documentation →](./mcp-zendesk/README.md)
+
+---
+
 ## Repository Structure
 
 ```
 peta-mcp-servers/
-├── mcp-server-template/     # Template for new MCP servers
 ├── mcp-google-drive/        # Google Drive integration
 ├── mcp-postgres/            # PostgreSQL database integration
 ├── mcp-notion/              # Notion workspace integration
@@ -183,6 +187,7 @@ peta-mcp-servers/
 ├── mcp-figma/               # Figma design integration
 ├── mcp-rest-gateway/        # REST API to MCP gateway
 ├── mcp-github/              # GitHub integration
+├── mcp-zendesk/             # Zendesk integration
 └── README.md                # This file
 ```
 
@@ -237,6 +242,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Google Calendar | `ghcr.io/dunialabs/mcp-servers/google-calendar` | v1.0.1 |
 | REST Gateway | `ghcr.io/dunialabs/mcp-servers/rest-gateway` | v1.0.1 |
 | GitHub | `ghcr.io/dunialabs/mcp-servers/github` | v1.0.0 |
+| Zendesk | `ghcr.io/dunialabs/mcp-servers/zendesk` | v1.0.0 |
 
 ### Pull Images
 
@@ -322,6 +328,15 @@ Using GitHub Container Registry images provides better reliability and automatic
       "env": {
         "accessToken": "ghp_xxx..."
       }
+    },
+    "zendesk": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "zendeskSubdomain", "-e", "zendeskEmail", "-e", "zendeskApiToken", "ghcr.io/dunialabs/mcp-servers/zendesk:latest"],
+      "env": {
+        "zendeskSubdomain": "mycompany",
+        "zendeskEmail": "admin@mycompany.com",
+        "zendeskApiToken": "your_api_token"
+      }
     }
   }
 }
@@ -382,6 +397,15 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-github/dist/stdio.js"],
       "env": {
         "accessToken": "ghp_xxx..."
+      }
+    },
+    "zendesk": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-zendesk/dist/stdio.js"],
+      "env": {
+        "zendeskSubdomain": "mycompany",
+        "zendeskEmail": "admin@mycompany.com",
+        "zendeskApiToken": "your_api_token"
       }
     }
   }
