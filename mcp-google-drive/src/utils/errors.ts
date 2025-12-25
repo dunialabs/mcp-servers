@@ -157,7 +157,7 @@ export function validateMimeTypeOrThrow(mimeType: string): void {
   }
 
   // Check for injection attempts
-  if (/[<>\"';()&|]/.test(mimeType)) {
+  if (/[<>"';()&|]/.test(mimeType)) {
     throw createMcpError(
       GoogleDriveErrorCode.InvalidMimeType,
       'MIME type contains invalid characters'
@@ -165,7 +165,7 @@ export function validateMimeTypeOrThrow(mimeType: string): void {
   }
 
   // Validate basic MIME type format
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_+.]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_+.]*$/.test(mimeType)) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_+.]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_+.]*$/.test(mimeType)) {
     const allowedFolderTypes = [
       'application/vnd.google-apps.folder',
       'application/vnd.google-apps.document',

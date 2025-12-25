@@ -42,7 +42,7 @@ export async function getFolderStats(params: GetFolderStatsParams) {
     const fileTypes: Record<string, number> = {};
 
     // Recursive function to count files
-    async function processFolder(currentFolderId: string): Promise<void> {
+    const processFolder = async (currentFolderId: string): Promise<void> => {
       let pageToken: string | undefined = undefined;
       let hasMore = true;
 
