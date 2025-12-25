@@ -69,8 +69,8 @@ export function handleNotionError(error: any, context: string): McpError {
     // Sanitize stack trace to remove sensitive paths
     errorData.stack = error.stack
       // Replace user home directories with generic paths
-      .replace(/\/Users\/[^\/]+/g, '/app')
-      .replace(/\/home\/[^\/]+/g, '/app')
+      .replace(/\/Users\/[^/]+/g, '/app')
+      .replace(/\/home\/[^/]+/g, '/app')
       .replace(/C:\\Users\\[^\\]+/g, 'C:\\app')
       // Limit stack depth to first 10 lines for security and readability
       .split('\n')
