@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  mcp-skills:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mcp-skills:local
+    container_name: mcp-skills
+    stdin_open: true
+    tty: false
+    volumes:
+      # Mount your local skills directory (adjust path as needed)
+      - ${SKILLS_DIR:-./examples/skills}:/app/skills:ro
+    environment:
+      - skills_dir=/app/skills
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - NODE_ENV=production

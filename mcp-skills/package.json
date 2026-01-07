@@ -1,0 +1,58 @@
+{
+  "name": "mcp-skills",
+  "version": "1.0.0",
+  "description": "MCP Server for Claude Skills - Enable filesystem-based Skills across Claude Desktop, VS Code, Cursor and other MCP-compatible tools",
+  "main": "dist/stdio.js",
+  "type": "module",
+  "bin": {
+    "mcp-skills": "./dist/stdio.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/stdio.ts",
+    "start": "node dist/stdio.js",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "test:watch": "vitest watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit",
+    "prepare": "npm run build",
+    "docker:build": "./build-docker.sh"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "skills",
+    "claude",
+    "ai",
+    "agent",
+    "stdio",
+    "docker",
+    "vscode",
+    "cursor"
+  ],
+  "author": "Dunia Labs",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "dotenv": "^16.4.5",
+    "gray-matter": "^4.0.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "tsx": "^4.7.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
