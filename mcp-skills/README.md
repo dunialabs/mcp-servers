@@ -18,30 +18,36 @@ Skills teach Claude how to complete specific tasks in a repeatable way:
 - 🔧 **Development**: API design patterns, code review checklists
 - 📊 **Data Analysis**: Custom workflows and transformations
 
-### Skill Types
+### How Skills Work
 
-This server supports two types of skills, following [Anthropic's official implementation](https://github.com/anthropics/skills):
+Skills are self-contained packages that provide specialized knowledge and production-ready code:
 
-**📚 Reference Skills** (Recommended for most use cases)
-- Provide code examples, patterns, and best practices
-- Claude reads the skill content and writes appropriate code on the host machine
-- No special runtime requirements in the MCP container
-- Examples: `pdf-processing`, `api-design`, `markdown-formatter`
+**📄 Instructions (SKILL.md)**
+- Core procedural knowledge and workflows (~5,000 tokens)
+- Explains when and how to use the skill
+- Lists required dependencies
 
-**🔧 Executable Skills** (For specialized tools)
-- Contain actual scripts that Claude executes directly
-- Require specific runtime environments (Python, Node.js, etc.)
-- May need a specialized Docker image with dependencies installed
-- Examples: Anthropic's `docx` skill with OOXML manipulation tools
+**📜 Scripts (scripts/)**
+- Production-ready, tested implementations
+- Claude reads script content via `readSkillFile` tool
+- Executes in Claude's sandbox environment (not in MCP container)
+- Examples: `merge_pdfs.py`, `extract_text.py`
 
-**Our example skills are reference skills**, keeping the Docker image lightweight while supporting any programming language or framework.
+**📚 References (references/)**
+- Detailed documentation loaded only when needed
+- API docs, advanced examples, troubleshooting guides
+
+**🎨 Assets (assets/)**
+- Templates, examples, and reusable files
+
+**This approach keeps the MCP container lightweight (222MB)** while supporting scripts in any language - Python, Node.js, Ruby, Go, etc.
 
 ## Features
 
 - 📁 **Filesystem-based**: Skills stored as simple directory structures with SKILL.md files
 - 🔄 **Progressive Loading**: 3-level loading system (metadata → instructions → resources) minimizes context usage
 - 🚀 **Docker Ready**: Production-ready container with security best practices
-- 🎯 **Simple API**: Just 2 MCP tools - `listSkills` and `getSkill`
+- 🎯 **Simple API**: 3 MCP tools - `listSkills`, `getSkill`, and `readSkillFile`
 - 🔧 **Platform Agnostic**: Works with Claude Desktop, VS Code, Cursor, and custom MCP clients
 - 📦 **Example Skills**: Includes 3 production-ready example skills to get started
 
@@ -197,7 +203,8 @@ Once configured, Claude can discover and use skills:
 1. **Discovery**: Claude calls `listSkills` early in conversations to see available capabilities
 2. **Evaluation**: As tasks emerge, Claude checks if any skill matches
 3. **Loading**: When relevant, Claude calls `getSkill` to load full instructions
-4. **Execution**: Claude follows the skill's workflow, reading references and executing scripts as needed
+4. **Script Access**: Claude uses `readSkillFile` to get script content
+5. **Execution**: Claude writes scripts to its working directory and executes them in its sandbox
 
 **Example conversation:**
 
@@ -206,9 +213,9 @@ User: "Extract the table data from quarterly-report.pdf"
 
 Claude: [Calls listSkills → sees pdf-processing skill]
 Claude: [Calls getSkill("pdf-processing") → loads instructions]
-Claude: According to the skill, I'll use the extract_tables.py script:
-
-[Executes: python scripts/extract_tables.py quarterly-report.pdf output.csv]
+Claude: [Calls readSkillFile("pdf-processing", "scripts/extract_tables.py")]
+Claude: [Writes script to ./extract_tables.py]
+Claude: [Executes: python ./extract_tables.py quarterly-report.pdf output.csv]
 
 I've extracted the tables to output.csv. The file contains...
 ```
@@ -227,10 +234,11 @@ Skills use a 3-level loading system to minimize context usage:
 - Full SKILL.md content
 - Core procedural knowledge
 
-**Level 3 - Resources (unbounded)**
+**Level 3 - Resources (variable size)**
 - Loaded progressively as workflow requires
-- References, scripts, assets
-- Claude accesses via file reading and bash execution
+- Scripts via `readSkillFile` (~400 tokens per script)
+- References for detailed documentation
+- Assets for templates and examples
 
 ### Testing the Server
 

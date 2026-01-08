@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { SkillScanner } from './scanner/skill-scanner.js';
 import { listSkills } from './tools/list-skills.js';
 import { getSkill } from './tools/get-skill.js';
+import { readSkillFile } from './tools/read-skill-file.js';
 import { ServerConfig } from './types/index.js';
 import { logger } from './utils/logger.js';
 import { handleToolError } from './utils/errors.js';
@@ -95,10 +96,17 @@ After loading a skill, follow its instructions. Skills may reference additional 
 - Load into context only when the workflow requires them
 - Access by resolving relative paths against the skill's absolute path
 
-**Scripts** (\`scripts/\`): Executable code that runs without entering context
+**Scripts** (\`scripts/\`): Production-ready code for common operations
 - Example: \`scripts/extract.py\`, \`scripts/validate.sh\`
-- Execute using bash: \`cd /path/to/skill && python scripts/script.py\`
-- Provides deterministic reliability and efficiency for specific operations
+- **Scripts are tested implementations** - prefer using them as-is for reliability
+- **To use a script**:
+  1. Use \`readSkillFile\` tool to get the script content
+  2. Review the code to understand what it does
+  3. Write the script to your working directory (use as-is, avoid unnecessary modifications)
+  4. Execute the script in your sandbox environment
+- **Dependencies**: Check the skill's SKILL.md for required packages (e.g., \`pip install pypdf pdfplumber\`)
+- **Modifications**: Only modify if your specific use case requires it; the provided scripts are tested and reliable
+- This approach ensures scripts run in a safe, controlled environment regardless of client configuration
 
 **Assets** (\`assets/\`): Files used in output (templates, images, etc.)
 - Copy or modify as needed for the final output
@@ -136,6 +144,27 @@ Retrieves the complete content and details of a specific Skill.
 
 **When to use**: When a skill clearly matches your current task
 
+### 3. readSkillFile
+
+Reads a file from a skill's directory (scripts, references, or assets).
+
+**Parameters**:
+- \`skillName\` (string): The name of the skill
+- \`filePath\` (string): Relative path to the file (e.g., \`scripts/merge_pdfs.py\`, \`references/FORMS.md\`)
+
+**Returns**:
+- \`skillName\`: Skill name
+- \`filePath\`: Normalized file path
+- \`size\`: File size in bytes
+- \`content\`: File content as text
+
+**Security**:
+- Only files in \`scripts/\`, \`references/\`, \`assets/\` directories are accessible
+- Maximum file size: 100KB
+- Only text files are supported (.py, .js, .sh, .md, .txt, .json, .yaml, etc.)
+
+**When to use**: When you need to read script code, reference documentation, or asset templates
+
 ## Example Workflow
 
 Here's how to progressively load and use a PDF processing skill:
@@ -144,13 +173,14 @@ Here's how to progressively load and use a PDF processing skill:
 2. **You discover skills**: Call \`listSkills\` → see "pdf-processing - Extract text and tables from PDF files, fill forms..."
 3. **You evaluate**: Description matches task → this skill is relevant
 4. **You load skill**: Call \`getSkill\` with name \`pdf-processing\`
-5. **Skill loaded**: Receive SKILL.md path and content (~5k tokens now in context)
-6. **Follow instructions**: Skill mentions form filling is in \`references/FORMS.md\`
-7. **Load reference**: Read \`/path/to/pdf-processing/references/FORMS.md\` (only loaded because workflow needs it)
-8. **Execute script**: Run \`cd /path/to/pdf-processing && python scripts/fill_form.py\` (executes without loading into context)
-9. **Complete task**: Use guidance to finish the user's request
+5. **Skill loaded**: Receive SKILL.md content (~5k tokens now in context)
+6. **Follow instructions**: SKILL.md mentions form filling, check dependencies: \`pip install pypdf\`
+7. **Get script**: Call \`readSkillFile(skillName: "pdf-processing", filePath: "scripts/fill_form.py")\`
+8. **Prepare script**: Write script content to \`./fill_form.py\` in your working directory
+9. **Execute**: Run \`python ./fill_form.py input.pdf output.pdf --json data.json\` in your sandbox
+10. **Complete task**: Use the filled PDF to finish the user's request
 
-Notice: You discovered all skills (~100 tokens), loaded one skill (~5k tokens), read one reference (as needed), and executed one script (no context cost).
+Notice: You discovered all skills (~100 tokens), loaded one skill (~5k tokens), read one script (~1k tokens), and executed it safely in your sandbox.
 
 ## Key Principles
 
@@ -345,7 +375,80 @@ This tool can be used when:
       }
     );
 
-    logger.info('[Server] Tools registered: listSkills, getSkill');
+    // Register readSkillFile tool
+    this.server.registerTool(
+      'readSkillFile',
+      {
+        description: `Read a file from a skill's directory (scripts, references, or assets).
+
+<use_case>
+Use this tool to read script code, reference documentation, or asset templates from a skill.
+Returns the file content as text, which you can then use, modify, or execute.
+</use_case>
+
+<important_notes>
+- Only files in scripts/, references/, or assets/ directories are accessible
+- Maximum file size: 100KB
+- Only text files are supported (.py, .js, .sh, .md, .txt, .json, .yaml, etc.)
+- Binary files and files in other directories are blocked for security
+- Use this to get script content before executing it in your sandbox
+</important_notes>
+
+<examples>
+Example usage:
+Input: { "skillName": "pdf-processing", "filePath": "scripts/merge_pdfs.py" }
+
+Output:
+{
+  "skillName": "pdf-processing",
+  "filePath": "scripts/merge_pdfs.py",
+  "size": 1511,
+  "content": "#!/usr/bin/env python3\\n..."
+}
+
+Workflow:
+1. Call readSkillFile to get script content
+2. Write content to your working directory: write("./merge_pdfs.py", content)
+3. Execute in your sandbox: bash("python ./merge_pdfs.py output.pdf file1.pdf file2.pdf")
+</examples>
+
+<aliases>
+This tool can be used when:
+- "Get the script content"
+- "Read the [script-name] script"
+- "Show me the code for [script-name]"
+- Need to execute a skill's script
+</aliases>`,
+        inputSchema: {
+          skillName: z
+            .string()
+            .min(1)
+            .describe('The name of the skill (from listSkills)'),
+          filePath: z
+            .string()
+            .min(1)
+            .describe('Relative path to the file (e.g., "scripts/merge_pdfs.py", "references/FORMS.md")'),
+        },
+      },
+      async ({ skillName, filePath }) => {
+        logger.info(`[Tools] Executing readSkillFile: ${skillName}/${filePath}`);
+        try {
+          const result = await readSkillFile(this.scanner, skillName, filePath);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: result,
+              },
+            ],
+          };
+        } catch (error) {
+          handleToolError(error, 'readSkillFile');
+        }
+      }
+    );
+
+    logger.info('[Server] Tools registered: listSkills, getSkill, readSkillFile');
   }
 
   /**
