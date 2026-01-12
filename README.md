@@ -176,6 +176,52 @@ An MCP server for Zendesk integration, enabling AI assistants to manage tickets,
 
 ---
 
+### 9. MCP Skills Server
+**Directory:** `mcp-skills/`
+
+An MCP server that brings filesystem-based Agent Skills to Claude Desktop, VS Code, Cursor, and other MCP-compatible platforms.
+
+**Features:**
+
+- Filesystem-based skills with simple directory structures
+- Progressive loading system (metadata → instructions → resources)
+- 3 MCP tools: `listSkills`, `getSkill`, `readSkillFile`
+- Scripts support for any language (Python, Node.js, Ruby, Go, etc.)
+- Sandbox script execution in Claude's environment
+- Skills include instructions (SKILL.md), scripts, references, and assets
+- Production-ready example skills included
+- STDIO transport
+- Docker support (amd64/arm64)
+- Lightweight container (222MB)
+
+[View Documentation →](./mcp-skills/README.md)
+
+---
+
+### 10. MCP Canva Server
+**Directory:** `mcp-canva/`
+
+An MCP server for Canva integration, enabling AI assistants to create and manage designs, assets, folders, exports, imports, and brand templates through Canva Connect API v1.
+
+**Features:**
+
+- 30+ tools for Canva operations
+- Design management (create, list, get, pages, export formats)
+- Asset management (upload, get, update, delete, status tracking)
+- Folder operations (create, update, delete, list items, move items)
+- Export operations (PDF, JPG, PNG, PPTX, GIF, MP4, SVG with format-specific options)
+- Import operations (import from URL with status tracking)
+- Brand template tools (list, get, dataset, autofill with text/image/chart data)
+- User information (profile, capabilities)
+- OAuth 2.0 authentication with token refresh
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-canva/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -188,6 +234,8 @@ peta-mcp-servers/
 ├── mcp-rest-gateway/        # REST API to MCP gateway
 ├── mcp-github/              # GitHub integration
 ├── mcp-zendesk/             # Zendesk integration
+├── mcp-skills/              # Filesystem-based Agent Skills
+├── mcp-canva/               # Canva design integration
 └── README.md                # This file
 ```
 
@@ -243,6 +291,8 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | REST Gateway | `ghcr.io/dunialabs/mcp-servers/rest-gateway` | v1.0.1 |
 | GitHub | `ghcr.io/dunialabs/mcp-servers/github` | v1.0.0 |
 | Zendesk | `ghcr.io/dunialabs/mcp-servers/zendesk` | v1.0.0 |
+| Skills | `ghcr.io/dunialabs/mcp-servers/skills` | v1.0.0 |
+| Canva | `ghcr.io/dunialabs/mcp-servers/canva` | v1.0.0 |
 
 ### Pull Images
 
@@ -337,6 +387,17 @@ Using GitHub Container Registry images provides better reliability and automatic
         "zendeskEmail": "admin@mycompany.com",
         "zendeskApiToken": "your_api_token"
       }
+    },
+    "skills": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-v", "/Users/your-username/skills:/app/skills:ro", "-e", "skills_dir=/app/skills", "ghcr.io/dunialabs/mcp-servers/skills:latest"]
+    },
+    "canva": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/canva:latest"],
+      "env": {
+        "accessToken": "your_canva_oauth_token"
+      }
     }
   }
 }
@@ -406,6 +467,20 @@ If you prefer running servers directly without Docker:
         "zendeskSubdomain": "mycompany",
         "zendeskEmail": "admin@mycompany.com",
         "zendeskApiToken": "your_api_token"
+      }
+    },
+    "skills": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-skills/dist/stdio.js"],
+      "env": {
+        "skills_dir": "/Users/your-username/skills"
+      }
+    },
+    "canva": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-canva/dist/stdio.js"],
+      "env": {
+        "accessToken": "your_canva_oauth_token"
       }
     }
   }
