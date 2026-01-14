@@ -222,6 +222,32 @@ An MCP server for Canva integration, enabling AI assistants to create and manage
 
 ---
 
+### 11. MCP Stripe Server
+**Directory:** `mcp-stripe/`
+
+An MCP server for Stripe integration, enabling AI assistants to process payments, manage customers, handle subscriptions, and perform billing operations through Stripe API.
+
+**Features:**
+
+- 28 tools for Stripe operations
+- Payment Intents (create, confirm, cancel, retrieve, list) - One-time payments
+- Customer management (create, get, update, list, delete)
+- Refund operations (create, get, list)
+- Product catalog (create, get, update, list, delete)
+- Pricing models (create, get, update, list) - One-time & recurring
+- Subscription lifecycle (create, get, update, cancel, resume, list)
+- Dual authentication modes (Platform keys + Stripe Connect)
+- PCI DSS compliant (no card data handling)
+- Idempotency support for safe retries
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+- Production-ready error handling and logging
+
+[View Documentation →](./mcp-stripe/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -236,6 +262,7 @@ peta-mcp-servers/
 ├── mcp-zendesk/             # Zendesk integration
 ├── mcp-skills/              # Filesystem-based Agent Skills
 ├── mcp-canva/               # Canva design integration
+├── mcp-stripe/              # Stripe payment integration
 └── README.md                # This file
 ```
 
@@ -293,6 +320,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Zendesk | `ghcr.io/dunialabs/mcp-servers/zendesk` | v1.0.0 |
 | Skills | `ghcr.io/dunialabs/mcp-servers/skills` | v1.0.0 |
 | Canva | `ghcr.io/dunialabs/mcp-servers/canva` | v1.0.0 |
+| Stripe | `ghcr.io/dunialabs/mcp-servers/stripe` | v1.0.0 |
 
 ### Pull Images
 
@@ -398,6 +426,13 @@ Using GitHub Container Registry images provides better reliability and automatic
       "env": {
         "accessToken": "your_canva_oauth_token"
       }
+    },
+    "stripe": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "STRIPE_SECRET_KEY", "ghcr.io/dunialabs/mcp-servers/stripe:latest"],
+      "env": {
+        "STRIPE_SECRET_KEY": "sk_test_51xxxxx"
+      }
     }
   }
 }
@@ -481,6 +516,13 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-canva/dist/stdio.js"],
       "env": {
         "accessToken": "your_canva_oauth_token"
+      }
+    },
+    "stripe": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-stripe/dist/stdio.js"],
+      "env": {
+        "STRIPE_SECRET_KEY": "sk_test_51xxxxx"
       }
     }
   }

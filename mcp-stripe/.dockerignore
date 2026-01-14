@@ -1,0 +1,44 @@
+# Source files (only include dist/)
+src/
+tests/
+
+# Dependencies (will be installed in container)
+node_modules/
+
+# Development files
+*.md
+!README.md
+.git/
+.gitignore
+.github/
+
+# Build artifacts
+*.tsbuildinfo
+tsconfig.json
+.eslintrc.json
+.prettierrc.json
+
+# Environment files
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary
+tmp/
+temp/
+*.tmp

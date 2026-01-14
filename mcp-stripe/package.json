@@ -1,0 +1,59 @@
+{
+  "name": "mcp-stripe",
+  "version": "1.0.0",
+  "description": "Stripe MCP Server - Complete Stripe API integration for payments, subscriptions, and billing",
+  "main": "dist/stdio.js",
+  "type": "module",
+  "bin": {
+    "mcp-stripe": "./dist/stdio.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/stdio.ts",
+    "start": "node dist/stdio.js",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "test:integration": "vitest run tests/integration",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit",
+    "prepare": "npm run build",
+    "docker:build": "./build-docker.sh"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "stripe",
+    "payments",
+    "subscriptions",
+    "billing",
+    "api",
+    "claude",
+    "ai",
+    "stdio",
+    "docker"
+  ],
+  "author": "Dunia Labs",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "stripe": "^17.5.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "tsx": "^4.7.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
