@@ -254,22 +254,18 @@ export class SkillsMCPServer {
     this.server.registerTool(
       'listSkills',
       {
-        description: `List all available Skills with their metadata.
+        description: `List all available skills with their metadata.
 
-<use_case>
-Use this tool to discover what Skills are available in the skills directory.
-Returns each skill's name, description, version, and filesystem path.
-</use_case>
+**When to use this tool:**
+Use this to discover what skills are available in the skills directory. Returns each skill's name, description, version, and filesystem path. Call this early in conversations to understand available capabilities.
 
-<important_notes>
+**Important notes:**
 - No parameters required
 - Returns JSON array of skill summaries
-- Claude should call this at startup to know what capabilities are available
 - Each skill's description explains when to use that skill
-</important_notes>
 
-<examples>
-Example output:
+**Example output:**
+\`\`\`json
 {
   "skills": [
     {
@@ -281,15 +277,13 @@ Example output:
   ],
   "totalCount": 1
 }
-</examples>
+\`\`\`
 
-<aliases>
-This tool can be used when:
+**Common requests:**
 - "What skills are available?"
 - "List all skills"
 - "Show me available capabilities"
-- At startup to discover skills
-</aliases>`,
+- At startup to discover skills`,
         inputSchema: {},
       },
       async () => {
@@ -314,26 +308,26 @@ This tool can be used when:
     this.server.registerTool(
       'getSkill',
       {
-        description: `Get the complete content and details of a specific Skill.
+        description: `Get the complete content and details of a specific skill.
 
-<use_case>
-Use this tool when you need to apply a specific skill to accomplish a task.
-Returns the full SKILL.md content with instructions, plus the skill's file structure.
-</use_case>
+**When to use this tool:**
+Use this when you need to apply a specific skill to accomplish a task. Returns the full SKILL.md content with instructions, plus the skill's file structure.
 
-<important_notes>
+**Important notes:**
 - Requires skillName parameter (get from listSkills first)
 - Returns the complete SKILL.md markdown content
 - Returns list of all files in the skill directory
 - Returns the absolute path to the skill directory
 - After reading, follow the instructions in the SKILL.md content
-</important_notes>
 
-<examples>
-Example usage:
-Input: { "skillName": "pdf-processing" }
+**Example usage:**
+Input:
+\`\`\`json
+{ "skillName": "pdf-processing" }
+\`\`\`
 
 Output:
+\`\`\`json
 {
   "name": "pdf-processing",
   "version": "1.0.0",
@@ -341,15 +335,13 @@ Output:
   "content": "---\\nname: pdf-processing\\n...\\n# Instructions\\n...",
   "files": ["SKILL.md", "scripts/extract.py", "references/api.md"]
 }
-</examples>
+\`\`\`
 
-<aliases>
-This tool can be used when:
+**Common requests:**
 - "Use the [skill-name] skill"
 - "Load the [skill-name] skill"
 - "Get instructions for [skill-name]"
-- User's task matches a skill's description
-</aliases>`,
+- When user's task matches a skill's description`,
         inputSchema: {
           skillName: z
             .string()
@@ -381,44 +373,42 @@ This tool can be used when:
       {
         description: `Read a file from a skill's directory (scripts, references, or assets).
 
-<use_case>
-Use this tool to read script code, reference documentation, or asset templates from a skill.
-Returns the file content as text, which you can then use, modify, or execute.
-</use_case>
+**When to use this tool:**
+Use this to read script code, reference documentation, or asset templates from a skill. Returns the file content as text, which you can then use, modify, or execute.
 
-<important_notes>
+**Important notes:**
 - Only files in scripts/, references/, or assets/ directories are accessible
 - Maximum file size: 100KB
 - Only text files are supported (.py, .js, .sh, .md, .txt, .json, .yaml, etc.)
 - Binary files and files in other directories are blocked for security
 - Use this to get script content before executing it in your sandbox
-</important_notes>
 
-<examples>
-Example usage:
-Input: { "skillName": "pdf-processing", "filePath": "scripts/merge_pdfs.py" }
+**Example usage:**
+Input:
+\`\`\`json
+{ "skillName": "pdf-processing", "filePath": "scripts/merge_pdfs.py" }
+\`\`\`
 
 Output:
+\`\`\`json
 {
   "skillName": "pdf-processing",
   "filePath": "scripts/merge_pdfs.py",
   "size": 1511,
   "content": "#!/usr/bin/env python3\\n..."
 }
+\`\`\`
 
-Workflow:
+**Typical workflow:**
 1. Call readSkillFile to get script content
-2. Write content to your working directory: write("./merge_pdfs.py", content)
-3. Execute in your sandbox: bash("python ./merge_pdfs.py output.pdf file1.pdf file2.pdf")
-</examples>
+2. Write content to your working directory: \`write("./merge_pdfs.py", content)\`
+3. Execute in your sandbox: \`bash("python ./merge_pdfs.py output.pdf file1.pdf file2.pdf")\`
 
-<aliases>
-This tool can be used when:
+**Common requests:**
 - "Get the script content"
 - "Read the [script-name] script"
 - "Show me the code for [script-name]"
-- Need to execute a skill's script
-</aliases>`,
+- When you need to execute a skill's script`,
         inputSchema: {
           skillName: z
             .string()
