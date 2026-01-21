@@ -13,7 +13,8 @@ import { logger } from '../utils/logger.js';
 const MAX_FILE_SIZE = 100 * 1024;
 
 // Allowed directories (whitelist)
-const ALLOWED_DIRS = ['scripts', 'references', 'assets'];
+// Support both singular and plural forms for flexibility
+const ALLOWED_DIRS = ['scripts', 'script', 'references', 'reference', 'assets', 'asset'];
 
 // Allowed text file extensions
 const ALLOWED_EXTENSIONS = [
@@ -59,11 +60,15 @@ export async function readSkillFile(
     );
   }
 
-  // Check if the path starts with an allowed directory
-  const firstDir = normalizedPath.split('/')[0];
-  if (!ALLOWED_DIRS.includes(firstDir)) {
+  // Check if the path is in an allowed location
+  // Allow: root directory files, or files in allowed subdirectories
+  const pathParts = normalizedPath.split('/');
+  const isRootFile = pathParts.length === 1;  // e.g., "sum.py"
+  const firstDir = pathParts[0];
+
+  if (!isRootFile && !ALLOWED_DIRS.includes(firstDir)) {
     throw new SkillError(
-      `Access denied: '${filePath}'. Only files in ${ALLOWED_DIRS.join(', ')} directories can be read.`,
+      `Access denied: '${filePath}'. Only files in root or ${ALLOWED_DIRS.join(', ')} directories can be read.`,
       'ACCESS_DENIED'
     );
   }
