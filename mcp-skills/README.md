@@ -263,55 +263,75 @@ npx @modelcontextprotocol/inspector node dist/stdio.js
 
 ### Using with PetaConsole
 
-PetaConsole provides a visual interface for MCP configuration:
+PetaConsole provides a visual interface for managing Skills:
 
 1. Log in to PetaConsole
-2. Navigate to MCP Configuration → Add MCP Server
-3. Select "Skills" from the server list
-4. Choose your local skills directory:
-   - Click "Browse" to select folder
-   - Or enter absolute path based on your platform:
-     - **macOS**: `/Users/your-username/skills`
-     - **Windows (PowerShell/CMD)**: `C:/Users/your-username/skills`
-     - **Windows (WSL)**: `/mnt/c/Users/your-username/skills`
-     - **Linux**: `/home/your-username/skills`
-5. Console automatically generates the Docker configuration with proper volume mounting
-6. Click "Save" - configuration syncs to Claude Desktop automatically
-7. Restart Claude Desktop to activate the Skills MCP
+2. Navigate to MCP Configuration → Skills Server
+3. **Upload Skills:**
+   - Drag & drop ZIP file or click to select
+   - ZIP should contain directories with SKILL.md files
+   - Maximum file size: 10MB
+4. Console uploads to Core server, which extracts skills automatically
+5. Skills are stored per server: `skills/{serverId}/`
+6. Restart Claude Desktop to use new skills
+
+**Supported ZIP structures:**
+
+All of these work - backend automatically finds SKILL.md directories:
+
+```
+archive.zip                     archive.zip
+└── pdf-processing/             └── projects/skills/
+    └── SKILL.md                    └── pdf-processing/
+                                        └── SKILL.md
+```
+
+**Skills Management UI:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Skills Directory                    Sort: Newest ↕  Delete All │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  Drag & drop your skills ZIP file or click to select   │    │
+│  │  (Maximum ZIP file size: 10MB)                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+├─────────────────────────────────────────────────────────────────┤
+│  pdf-processing                                          [Delete]│
+│  PDF document processing and extraction                          │
+│  v1.0.0 - Updated at 14:30 Jan 27, 2026                         │
+│─────────────────────────────────────────────────────────────────│
+│  data-analysis                                           [Delete]│
+│  Data analysis and visualization                                 │
+│  v1.2.0 - Updated at 10:15 Jan 26, 2026                         │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 **What happens behind the scenes:**
-- Console converts your local path to Docker volume mount format
-- Generates proper `claude_desktop_config.json` configuration
-- Handles platform-specific path formats (macOS/Windows/Linux)
 
-**Example Console UI:**
+1. User uploads ZIP file via Console UI
+2. Console sends ZIP (Base64 encoded) to Core server
+3. Core extracts ZIP, finds all directories containing SKILL.md
+4. Core copies skill directories to `skills/{serverId}/`
+5. Skills MCP container mounts this directory (read-only)
+6. Claude can access skills via MCP tools
+
+**Architecture:**
+
 ```
-┌─────────────────────────────────────────────┐
-│ Skills MCP Configuration                    │
-│                                             │
-│ Skills Directory:                           │
-│ ┌─────────────────────────────────────────┐ │
-│ │ /Users/tataufo/skills          [Browse] │ │
-│ └─────────────────────────────────────────┘ │
-│                                             │
-│ 💡 Path examples:                           │
-│   • macOS: /Users/username/skills          │
-│   • Windows: C:/Users/username/skills      │
-│   • WSL: /mnt/c/Users/username/skills      │
-│   • Linux: /home/username/skills           │
-│                                             │
-│ ✓ 3 skills found in directory              │
-│   • pdf-processing                          │
-│   • api-design                              │
-│   • markdown-formatter                      │
-│                                             │
-│ [Test Connection]  [Save Configuration]    │
-└─────────────────────────────────────────────┘
+Console                         Core                        Skills MCP
+   │                             │                              │
+   │  ── Upload ZIP ──►          │                              │
+   │                             │  ── Extract to ──►           │
+   │                             │     skills/{serverId}/       │
+   │                             │           │                  │
+   │                             │           └── Volume Mount ──►│
+   │                             │              (read-only)     │
+   │                                                            │
+   │  ◄────────────── Claude calls listSkills/getSkill ─────────│
 ```
 
-**Generated Configuration:**
-
-After saving in PetaConsole, the following configuration will be synced to Claude Desktop:
+**Docker Configuration (generated by Core):**
 
 ```json
 {
@@ -323,7 +343,7 @@ After saving in PetaConsole, the following configuration will be synced to Claud
         "-i",
         "--rm",
         "-v",
-        "/Users/your-username/skills:/app/skills:ro",
+        "/path/to/skills/{serverId}:/app/skills:ro",
         "-e",
         "skills_dir=/app/skills",
         "ghcr.io/dunialabs/mcp-servers/skills:latest"
@@ -333,24 +353,9 @@ After saving in PetaConsole, the following configuration will be synced to Claud
 }
 ```
 
-**Platform-specific volume mounts:**
-```json
-// macOS
-"-v", "/Users/your-username/skills:/app/skills:ro"
-
-// Windows (PowerShell/CMD)
-"-v", "C:/Users/your-username/skills:/app/skills:ro"
-
-// Windows (WSL)
-"-v", "/mnt/c/Users/your-username/skills:/app/skills:ro"
-
-// Linux
-"-v", "/home/your-username/skills:/app/skills:ro"
-```
-
 **What each parameter means:**
 - `docker run -i --rm`: Run container interactively, remove after exit
-- `-v /local/path:/app/skills:ro`: Mount local directory as read-only
+- `-v /path/to/skills/{serverId}:/app/skills:ro`: Mount server-specific skills directory as read-only
 - `-e skills_dir=/app/skills`: Set environment variable for skills location
 - `ghcr.io/dunialabs/mcp-servers/skills:latest`: Docker image to use
 
