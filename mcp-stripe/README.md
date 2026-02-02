@@ -219,9 +219,14 @@ For development mode with hot reload:
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
-        "-e", "STRIPE_SECRET_KEY=sk_test_51xxxxx",
+        "-e", "STRIPE_SECRET_KEY",
+        "-e", "STRIPE_ACCOUNT",
         "ghcr.io/dunialabs/mcp-servers/stripe:latest"
-      ]
+      ],
+      "env": {
+        "STRIPE_SECRET_KEY": "sk_test_platform_xxx",
+        "STRIPE_ACCOUNT": "acct_user_xxx"
+      }
     }
   }
 }
@@ -236,10 +241,15 @@ Or use local Docker image:
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
-        "-e", "STRIPE_SECRET_KEY=sk_test_51xxxxx",
+        "-e", "STRIPE_SECRET_KEY",
+        "-e", "STRIPE_ACCOUNT",
         "-e", "LOG_LEVEL=info",
         "mcp-stripe:latest"
-      ]
+      ],
+      "env": {
+        "STRIPE_SECRET_KEY": "sk_test_platform_xxx",
+        "STRIPE_ACCOUNT": "acct_user_xxx"
+      }
     }
   }
 }
