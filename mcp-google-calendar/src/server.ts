@@ -4,7 +4,11 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { listCalendars } from './tools/listCalendars.js';
 import { listEvents } from './tools/listEvents.js';
 import { searchEvents } from './tools/searchEvents.js';
@@ -16,6 +20,12 @@ import { quickAdd } from './tools/quickAdd.js';
 import { createCalendar } from './tools/createCalendar.js';
 import { deleteCalendar } from './tools/deleteCalendar.js';
 import { logger } from './utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/** Calendar view UI resource URI */
+const CALENDAR_VIEW_URI = 'ui://calendar/events-view';
 
 /**
  * Tool schemas using Zod
@@ -209,13 +219,19 @@ export class GoogleCalendarMcpServer {
       }
     );
 
-    // Tool 2: List Events
-    this.server.registerTool(
+    // Tool 2: List Events (with MCP Apps UI)
+    registerAppTool(
+      this.server,
       'gcalendarListEvents',
       {
         title: 'GCalendar - List Events',
-        description: 'List events from a specific calendar within a time range. Supports filtering by time, ordering, and pagination.',
+        description: 'List events from a specific calendar within a time range. Supports filtering by time, ordering, and pagination. Returns an interactive calendar view.',
         inputSchema: ListEventsParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: CALENDAR_VIEW_URI
+          }
+        }
       },
       async (params: any) => {
         return await listEvents(params);
@@ -327,6 +343,42 @@ export class GoogleCalendarMcpServer {
     );
 
     logger.info('[Server] Registered 10 tools');
+
+    // Register UI resources for MCP Apps
+    registerAppResource(
+      this.server,
+      'Calendar View',
+      CALENDAR_VIEW_URI,
+      {
+        description: 'Interactive calendar view for displaying events'
+      },
+      async (uri) => {
+        logger.debug('[Server] Serving calendar view UI resource');
+
+        try {
+          const htmlPath = join(__dirname, 'apps', 'calendar-view', 'index.html');
+          const htmlContent = readFileSync(htmlPath, 'utf-8');
+          return {
+            contents: [{
+              uri: uri.href,
+              mimeType: RESOURCE_MIME_TYPE,
+              text: htmlContent
+            }]
+          };
+        } catch (error) {
+          logger.error(`[Server] Failed to load UI resource: ${error}`);
+          return {
+            contents: [{
+              uri: uri.href,
+              mimeType: RESOURCE_MIME_TYPE,
+              text: '<html><body><p>Failed to load calendar view</p></body></html>'
+            }]
+          };
+        }
+      }
+    );
+
+    logger.info('[Server] Registered UI resources');
   }
 
   /**

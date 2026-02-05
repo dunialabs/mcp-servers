@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar View</title>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f8f9fa;
+      padding: 16px;
+    }
+
+    #calendar {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 16px;
+    }
+
+    .fc {
+      font-size: 14px;
+    }
+
+    .fc-toolbar-title {
+      font-size: 1.2em !important;
+      font-weight: 600;
+    }
+
+    .fc-button {
+      background: #4285f4 !important;
+      border-color: #4285f4 !important;
+      font-size: 13px !important;
+      padding: 6px 12px !important;
+    }
+
+    .fc-button:hover {
+      background: #3367d6 !important;
+      border-color: #3367d6 !important;
+    }
+
+    .fc-button-active {
+      background: #1a56db !important;
+      border-color: #1a56db !important;
+    }
+
+    .fc-event {
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .fc-daygrid-event {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fc-day-today {
+      background: #e8f0fe !important;
+    }
+
+    .event-tooltip {
+      position: fixed;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      max-width: 300px;
+      display: none;
+    }
+
+    .event-tooltip h4 {
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .event-tooltip p {
+      margin: 4px 0;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .event-tooltip .time {
+      color: #4285f4;
+      font-weight: 500;
+    }
+
+    .event-tooltip .location {
+      color: #ea4335;
+    }
+
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      color: #666;
+    }
+
+    .loading::after {
+      content: '';
+      width: 24px;
+      height: 24px;
+      border: 2px solid #4285f4;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="calendar">
+    <div class="loading">Loading events...</div>
+  </div>
+  <div class="event-tooltip" id="tooltip"></div>
+
+  <script type="module">
+    // MCP Apps SDK initialization
+    class McpApp {
+      constructor() {
+        this.connected = false;
+        this.pendingRequests = new Map();
+        this.requestId = 0;
+        this.ontoolresult = null;
+      }
+
+      async connect() {
+        return new Promise((resolve) => {
+          window.addEventListener('message', (event) => {
+            this.handleMessage(event.data);
+          });
+
+          // Signal ready to parent
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            method: 'ready'
+          }, '*');
+
+          this.connected = true;
+          resolve();
+        });
+      }
+
+      handleMessage(message) {
+        if (message.jsonrpc !== '2.0') return;
+
+        // Handle tool result
+        if (message.method === 'toolResult') {
+          if (this.ontoolresult) {
+            this.ontoolresult(message.params);
+          }
+        }
+
+        // Handle response to our requests
+        if (message.id && this.pendingRequests.has(message.id)) {
+          const { resolve, reject } = this.pendingRequests.get(message.id);
+          this.pendingRequests.delete(message.id);
+
+          if (message.error) {
+            reject(new Error(message.error.message));
+          } else {
+            resolve(message.result);
+          }
+        }
+      }
+
+      async callServerTool(options) {
+        const id = ++this.requestId;
+
+        return new Promise((resolve, reject) => {
+          this.pendingRequests.set(id, { resolve, reject });
+
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            id,
+            method: 'callTool',
+            params: options
+          }, '*');
+        });
+      }
+
+      async updateModelContext(context) {
+        const id = ++this.requestId;
+
+        return new Promise((resolve, reject) => {
+          this.pendingRequests.set(id, { resolve, reject });
+
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            id,
+            method: 'updateModelContext',
+            params: context
+          }, '*');
+        });
+      }
+    }
+
+    // Initialize app
+    const app = new McpApp();
+    let calendar = null;
+
+    // Color palette for events
+    const colors = [
+      '#4285f4', '#34a853', '#fbbc05', '#ea4335',
+      '#9c27b0', '#00bcd4', '#ff9800', '#795548',
+    ];
+
+    function getEventColor(calendarId) {
+      const hash = calendarId.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+      }, 0);
+      return colors[Math.abs(hash) % colors.length];
+    }
+
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString([], {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+
+    function showTooltip(event, jsEvent) {
+      const tooltip = document.getElementById('tooltip');
+      const extendedProps = event.extendedProps || {};
+
+      let timeText = '';
+      if (event.allDay) {
+        timeText = 'All day';
+      } else {
+        timeText = `${formatTime(event.start)} - ${formatTime(event.end)}`;
+      }
+
+      tooltip.innerHTML = `
+        <h4>${event.title}</h4>
+        <p class="time">${formatDate(event.start)} ${timeText}</p>
+        ${extendedProps.location ? `<p class="location">${extendedProps.location}</p>` : ''}
+        ${extendedProps.description ? `<p>${extendedProps.description}</p>` : ''}
+      `;
+
+      const rect = jsEvent.target.getBoundingClientRect();
+      tooltip.style.left = `${rect.left}px`;
+      tooltip.style.top = `${rect.bottom + 8}px`;
+      tooltip.style.display = 'block';
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+
+    function initCalendar(events) {
+      const calendarEl = document.getElementById('calendar');
+      calendarEl.innerHTML = '';
+
+      calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: events,
+        eventClick: function(info) {
+          app.updateModelContext({
+            content: [{
+              type: 'text',
+              text: `User clicked on event: "${info.event.title}" on ${formatDate(info.event.start)}`
+            }]
+          });
+        },
+        eventMouseEnter: function(info) {
+          showTooltip(info.event, info.jsEvent);
+        },
+        eventMouseLeave: function() {
+          hideTooltip();
+        },
+        dateClick: function(info) {
+          app.updateModelContext({
+            content: [{
+              type: 'text',
+              text: `User selected date: ${formatDate(info.dateStr)}`
+            }]
+          });
+        },
+        datesSet: async function(info) {
+          const timeMin = info.start.toISOString();
+          const timeMax = info.end.toISOString();
+
+          try {
+            const result = await app.callServerTool({
+              name: 'gcalendarListEvents',
+              arguments: { timeMin, timeMax, maxResults: 100 }
+            });
+
+            if (result && result.events) {
+              updateCalendarEvents(result.events);
+            }
+          } catch (error) {
+            console.error('Failed to fetch events:', error);
+          }
+        }
+      });
+
+      calendar.render();
+    }
+
+    function updateCalendarEvents(events) {
+      if (!calendar) return;
+
+      calendar.removeAllEvents();
+
+      const calendarEvents = events.map(event => ({
+        id: event.id,
+        title: event.summary || 'Untitled',
+        start: event.start?.dateTime || event.start?.date,
+        end: event.end?.dateTime || event.end?.date,
+        allDay: !event.start?.dateTime,
+        backgroundColor: getEventColor(event.calendarId || 'primary'),
+        borderColor: getEventColor(event.calendarId || 'primary'),
+        extendedProps: {
+          description: event.description,
+          location: event.location,
+          calendarId: event.calendarId
+        }
+      }));
+
+      calendarEvents.forEach(event => calendar.addEvent(event));
+    }
+
+    // Connect to MCP Apps host
+    await app.connect();
+
+    // Handle incoming tool results
+    app.ontoolresult = (result) => {
+      if (result && result.content) {
+        try {
+          let data = result.content;
+          if (typeof data === 'string') {
+            data = JSON.parse(data);
+          }
+
+          if (Array.isArray(data)) {
+            data = data.find(item => item.type === 'text');
+            if (data && data.text) {
+              data = JSON.parse(data.text);
+            }
+          }
+
+          if (data && data.events) {
+            const events = data.events.map(event => ({
+              id: event.id,
+              title: event.summary || 'Untitled',
+              start: event.start?.dateTime || event.start?.date,
+              end: event.end?.dateTime || event.end?.date,
+              allDay: !event.start?.dateTime,
+              backgroundColor: getEventColor(event.calendarId || 'primary'),
+              borderColor: getEventColor(event.calendarId || 'primary'),
+              extendedProps: {
+                description: event.description,
+                location: event.location,
+                calendarId: event.calendarId
+              }
+            }));
+
+            initCalendar(events);
+          }
+        } catch (e) {
+          console.error('Failed to parse tool result:', e);
+          initCalendar([]);
+        }
+      } else {
+        initCalendar([]);
+      }
+    };
+
+    // Initialize empty calendar while waiting for data
+    initCalendar([]);
+  </script>
+</body>
+</html>

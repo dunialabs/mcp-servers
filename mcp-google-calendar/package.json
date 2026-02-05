@@ -8,7 +8,8 @@
     "peta-mcp-google-calendar": "./dist/stdio.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/apps && cp -r src/apps/* dist/apps/ 2>/dev/null || true",
     "dev": "tsx watch src/stdio.ts",
     "start": "node dist/stdio.js",
     "clean": "rm -rf dist",
@@ -42,7 +43,8 @@
   "author": "PETA Team",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.23.0",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/ext-apps": "^1.0.1",
     "dotenv": "^16.4.5",
     "googleapis": "^140.0.0",
     "https-proxy-agent": "^7.0.6",
