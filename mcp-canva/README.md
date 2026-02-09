@@ -569,7 +569,7 @@ Contributions welcome! Please ensure:
 
 - Built with [Model Context Protocol](https://modelcontextprotocol.io)
 - Powered by [Canva Connect API](https://www.canva.dev/docs/connect/)
-- Based on [mcp-server-template](https://github.com/anthropics/mcp-server-template)
+- Based on [mcp-server-template](https://github.com/dunialabs/mcp-server-template)
 
 ---
 

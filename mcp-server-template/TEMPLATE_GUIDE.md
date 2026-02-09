@@ -74,7 +74,7 @@ mcp-server-template/
 ### 1. Initialize Project
 
 ```bash
-cd /Users/tataufo/AboutMCP/mcp-server-template
+cd /path/to/your-mcp-server
 
 # Install dependencies (already completed)
 npm install
@@ -105,7 +105,7 @@ This runs TypeScript directly using `tsx`, automatically restarting when code ch
     "template": {
       "command": "node",
       "args": [
-        "/Users/tataufo/AboutMCP/mcp-server-template/dist/index.js"
+        "/path/to/your-mcp-server/dist/index.js"
       ]
     }
   }
@@ -121,7 +121,7 @@ Or use tsx in development mode:
       "command": "npx",
       "args": [
         "tsx",
-        "/Users/tataufo/AboutMCP/mcp-server-template/src/index.ts"
+        "/path/to/your-mcp-server/src/index.ts"
       ],
       "env": {
         "NODE_ENV": "development"
