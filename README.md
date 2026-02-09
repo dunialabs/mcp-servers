@@ -248,6 +248,29 @@ An MCP server for Stripe integration, enabling AI assistants to process payments
 
 ---
 
+### 12. MCP Google Docs Server
+**Directory:** `mcp-google-docs/`
+
+An MCP server for Google Docs integration, enabling AI assistants to read, write, and edit Google Documents with Markdown support.
+
+**Features:**
+
+- 13 tools for Google Docs operations
+- Document discovery (list, search)
+- Document operations (create, read with Markdown/text/JSON output)
+- Content editing (insert text, replace, delete range)
+- Markdown support (write, append with inline **bold**, *italic*, ~~strikethrough~~)
+- Text formatting (bold, italic, underline, font, color, links)
+- Paragraph formatting (alignment, headings, spacing, indentation)
+- Structural elements (insert table, insert image from URL)
+- STDIO transport
+- Docker support (amd64/arm64)
+- Token-based authentication with runtime refresh
+
+[View Documentation →](./mcp-google-docs/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -263,6 +286,7 @@ peta-mcp-servers/
 ├── mcp-skills/              # Filesystem-based Agent Skills
 ├── mcp-canva/               # Canva design integration
 ├── mcp-stripe/              # Stripe payment integration
+├── mcp-google-docs/         # Google Docs integration
 └── README.md                # This file
 ```
 
@@ -321,6 +345,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Skills | `ghcr.io/dunialabs/mcp-servers/skills` | v1.0.0 |
 | Canva | `ghcr.io/dunialabs/mcp-servers/canva` | v1.0.0 |
 | Stripe | `ghcr.io/dunialabs/mcp-servers/stripe` | v1.0.0 |
+| Google Docs | `ghcr.io/dunialabs/mcp-servers/google-docs` | v1.0.0 |
 
 ### Pull Images
 
@@ -433,6 +458,13 @@ Using GitHub Container Registry images provides better reliability and automatic
       "env": {
         "STRIPE_SECRET_KEY": "sk_test_51xxxxx"
       }
+    },
+    "google-docs": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/google-docs:latest"],
+      "env": {
+        "accessToken": "ya29.xxx..."
+      }
     }
   }
 }
@@ -523,6 +555,13 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-stripe/dist/stdio.js"],
       "env": {
         "STRIPE_SECRET_KEY": "sk_test_51xxxxx"
+      }
+    },
+    "google-docs": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-google-docs/dist/stdio.js"],
+      "env": {
+        "accessToken": "ya29.xxx..."
       }
     }
   }
