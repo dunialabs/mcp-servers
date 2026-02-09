@@ -1,11 +1,11 @@
-# ghcr.io/anthropics/mcp-servers/google-docs - Docker image for STDIO mode
-FROM node:20-alpine
+# ghcr.io/dunialabs/mcp-servers/google-docs - Docker image for STDIO mode
+FROM node:18-alpine
 
-LABEL org.opencontainers.image.title="mcp-google-docs"
+LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/google-docs"
 LABEL org.opencontainers.image.description="Google Docs MCP Server - Read, write, and edit Google Documents"
 LABEL org.opencontainers.image.vendor="PETA Team"
-LABEL org.opencontainers.image.source="https://github.com/anthropics/mcp-servers"
-LABEL org.opencontainers.image.documentation="https://github.com/anthropics/mcp-servers/tree/main/mcp-google-docs"
+LABEL org.opencontainers.image.source="https://github.com/dunialabs/mcp-servers"
+LABEL org.opencontainers.image.documentation="https://github.com/dunialabs/mcp-servers/tree/main/mcp-google-docs"
 
 # Install necessary system dependencies
 RUN apk add --no-cache \
