@@ -736,7 +736,7 @@ Contributions welcome! Please ensure:
 
 - Built with [Model Context Protocol](https://modelcontextprotocol.io)
 - Powered by [Stripe API](https://stripe.com/docs/api)
-- Based on [mcp-server-template](https://github.com/anthropics/mcp-server-template)
+- Based on [mcp-server-template](https://github.com/dunialabs/mcp-servers/tree/main/mcp-server-template)
 
 ---
 

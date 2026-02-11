@@ -271,6 +271,28 @@ An MCP server for Google Docs integration, enabling AI assistants to read, write
 
 ---
 
+### 13. MCP Intercom Server
+**Directory:** `mcp-intercom/`
+
+An MCP server for Intercom integration, enabling AI assistants to manage conversations, contacts, companies, tags, and notes through Intercom API v2.11.
+
+**Features:**
+
+- 16 tools for Intercom operations
+- Contact management (list, search, get, create, update, add note)
+- Conversation management (list, search, get, reply, close, assign)
+- Company management (list, get)
+- Tag management (list, apply to contact)
+- Multi-region support (US, EU, AU)
+- OAuth 2.0 authentication with runtime token refresh
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-intercom/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -287,6 +309,7 @@ peta-mcp-servers/
 ├── mcp-canva/               # Canva design integration
 ├── mcp-stripe/              # Stripe payment integration
 ├── mcp-google-docs/         # Google Docs integration
+├── mcp-intercom/            # Intercom customer messaging integration
 └── README.md                # This file
 ```
 
@@ -346,6 +369,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Canva | `ghcr.io/dunialabs/mcp-servers/canva` | v1.0.0 |
 | Stripe | `ghcr.io/dunialabs/mcp-servers/stripe` | v1.0.0 |
 | Google Docs | `ghcr.io/dunialabs/mcp-servers/google-docs` | v1.0.0 |
+| Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 
 ### Pull Images
 
@@ -465,6 +489,14 @@ Using GitHub Container Registry images provides better reliability and automatic
       "env": {
         "accessToken": "ya29.xxx..."
       }
+    },
+    "intercom": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "-e", "intercomRegion", "ghcr.io/dunialabs/mcp-servers/intercom:latest"],
+      "env": {
+        "accessToken": "your_intercom_oauth_token",
+        "intercomRegion": "us"
+      }
     }
   }
 }
@@ -562,6 +594,14 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-google-docs/dist/stdio.js"],
       "env": {
         "accessToken": "ya29.xxx..."
+      }
+    },
+    "intercom": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-intercom/dist/stdio.js"],
+      "env": {
+        "accessToken": "your_intercom_oauth_token",
+        "intercomRegion": "us"
       }
     }
   }
