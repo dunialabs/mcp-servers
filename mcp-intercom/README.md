@@ -168,6 +168,14 @@ Intercom workspaces are hosted in different regions. Configure the correct regio
 | EU | `eu` | `https://api.eu.intercom.io` |
 | AU | `au` | `https://api.au.intercom.io` |
 
+**How to find your workspace region:** Log in to Intercom and check the URL in your browser's address bar:
+
+- `app.intercom.com` → set `intercomRegion=us`
+- `app.eu.intercom.com` → set `intercomRegion=eu`
+- `app.au.intercom.com` → set `intercomRegion=au`
+
+Setting the wrong region will result in a `401 Unauthorized` error.
+
 ### Claude Desktop Configuration
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):

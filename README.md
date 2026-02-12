@@ -293,6 +293,29 @@ An MCP server for Intercom integration, enabling AI assistants to manage convers
 
 ---
 
+### 14. MCP MySQL Server
+**Directory:** `mcp-mysql/`
+
+An MCP server for MySQL integration, enabling AI assistants to explore databases, run queries, and manage data through MySQL 5.7+ and MySQL 8.0+.
+
+**Features:**
+
+- 9 tools for MySQL operations
+- Schema exploration (list databases, list tables, describe table, get statistics)
+- Query execution (SELECT with row limits, INSERT/UPDATE/DELETE/REPLACE/TRUNCATE)
+- Query analysis (EXPLAIN with TREE/TRADITIONAL/JSON formats, EXPLAIN ANALYZE for MySQL 8.0.18+)
+- MySQL-specific tools (SHOW CREATE TABLE DDL, SHOW FULL PROCESSLIST)
+- Read and write always enabled — no access mode restriction
+- Compatible with MySQL 5.7+ and MySQL 8.0+
+- Automatic localhost remapping for Docker environments
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-mysql/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -310,6 +333,7 @@ peta-mcp-servers/
 ├── mcp-stripe/              # Stripe payment integration
 ├── mcp-google-docs/         # Google Docs integration
 ├── mcp-intercom/            # Intercom customer messaging integration
+├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
 ```
 
@@ -370,6 +394,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Stripe | `ghcr.io/dunialabs/mcp-servers/stripe` | v1.0.0 |
 | Google Docs | `ghcr.io/dunialabs/mcp-servers/google-docs` | v1.0.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
+| MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
 ### Pull Images
 
@@ -497,6 +522,13 @@ Using GitHub Container Registry images provides better reliability and automatic
         "accessToken": "your_intercom_oauth_token",
         "intercomRegion": "us"
       }
+    },
+    "mysql": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "MYSQL_URL", "ghcr.io/dunialabs/mcp-servers/mysql:latest"],
+      "env": {
+        "MYSQL_URL": "mysql://user:password@localhost:3306/database"
+      }
     }
   }
 }
@@ -602,6 +634,13 @@ If you prefer running servers directly without Docker:
       "env": {
         "accessToken": "your_intercom_oauth_token",
         "intercomRegion": "us"
+      }
+    },
+    "mysql": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-mysql/dist/index.js"],
+      "env": {
+        "MYSQL_URL": "mysql://user:password@localhost:3306/database"
       }
     }
   }
