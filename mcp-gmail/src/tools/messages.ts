@@ -33,6 +33,10 @@ export const SendMessageInputSchema = {
   inReplyTo: z.string().optional().describe('Optional In-Reply-To message-id header for true email replies'),
   references: z.array(z.string()).optional().describe('Optional References message-id chain for true email replies'),
   threadId: z.string().optional().describe('Optional thread ID for reply context'),
+  attachments: z
+    .unknown()
+    .optional()
+    .describe('Not supported. If provided, the tool will return guidance to include file links in the email body.'),
 };
 
 export const ModifyLabelsInputSchema = {
@@ -92,6 +96,7 @@ export interface SendMessageParams {
   inReplyTo?: string;
   references?: string[];
   threadId?: string;
+  attachments?: unknown;
 }
 
 export interface ModifyLabelsParams {
@@ -290,6 +295,13 @@ export async function gmailGetMessage(params: GetMessageParams) {
 }
 
 export async function gmailSendMessage(params: SendMessageParams) {
+  if (params.attachments !== undefined) {
+    throw createMcpError(
+      GmailErrorCode.InvalidParams,
+      'Attachments are not supported by gmailSendMessage. Include file links in the email body instead.'
+    );
+  }
+
   const gmail = getGmailClient();
 
   const raw = buildRawEmail({

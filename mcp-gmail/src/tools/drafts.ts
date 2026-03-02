@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { buildRawEmail, getGmailClient, withGmailRetry } from '../utils/gmail-api.js';
+import { createMcpError, GmailErrorCode } from '../utils/errors.js';
 
 export const CreateDraftInputSchema = {
   to: z.array(z.string().email()).min(1).describe('Recipient list'),
@@ -12,6 +13,10 @@ export const CreateDraftInputSchema = {
   inReplyTo: z.string().optional().describe('Optional In-Reply-To message-id header for true email replies'),
   references: z.array(z.string()).optional().describe('Optional References message-id chain for true email replies'),
   threadId: z.string().optional().describe('Optional thread ID for reply context'),
+  attachments: z
+    .unknown()
+    .optional()
+    .describe('Not supported. If provided, the tool will return guidance to include file links in the email body.'),
 };
 
 export const SendDraftInputSchema = {
@@ -29,6 +34,7 @@ export interface CreateDraftParams {
   inReplyTo?: string;
   references?: string[];
   threadId?: string;
+  attachments?: unknown;
 }
 
 export interface SendDraftParams {
@@ -36,6 +42,13 @@ export interface SendDraftParams {
 }
 
 export async function gmailCreateDraft(params: CreateDraftParams) {
+  if (params.attachments !== undefined) {
+    throw createMcpError(
+      GmailErrorCode.InvalidParams,
+      'Attachments are not supported by gmailCreateDraft. Include file links in the email body instead.'
+    );
+  }
+
   const gmail = getGmailClient();
 
   const raw = buildRawEmail({
