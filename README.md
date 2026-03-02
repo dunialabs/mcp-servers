@@ -316,6 +316,28 @@ An MCP server for MySQL integration, enabling AI assistants to explore databases
 
 ---
 
+### 15. MCP Gmail Server
+**Directory:** `mcp-gmail/`
+
+An MCP server for Gmail integration, enabling AI assistants to read messages, send emails, manage drafts, labels, and attachments through Gmail API v1.
+
+**Features:**
+
+- 12 tools for Gmail operations
+- Message operations (list, get, send, modify labels, trash, untrash, batch modify)
+- Draft workflow (create draft, send draft)
+- Label management (list labels)
+- Attachment operations (get attachment metadata/base64, download to local path with safe output directory controls)
+- Reply-friendly headers (`Reply-To`, `In-Reply-To`, `References`) for reliable threading behavior
+- OAuth 2.0 token-based authentication with runtime token refresh notifications
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-gmail/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -332,6 +354,7 @@ peta-mcp-servers/
 ├── mcp-canva/               # Canva design integration
 ├── mcp-stripe/              # Stripe payment integration
 ├── mcp-google-docs/         # Google Docs integration
+├── mcp-gmail/               # Gmail integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -393,6 +416,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Canva | `ghcr.io/dunialabs/mcp-servers/canva` | v1.0.0 |
 | Stripe | `ghcr.io/dunialabs/mcp-servers/stripe` | v1.0.0 |
 | Google Docs | `ghcr.io/dunialabs/mcp-servers/google-docs` | v1.0.0 |
+| Gmail | `ghcr.io/dunialabs/mcp-servers/gmail` | v0.2.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
@@ -515,6 +539,13 @@ Using GitHub Container Registry images provides better reliability and automatic
         "accessToken": "ya29.xxx..."
       }
     },
+    "gmail": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/gmail:latest"],
+      "env": {
+        "accessToken": "ya29.xxx..."
+      }
+    },
     "intercom": {
       "command": "docker",
       "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "-e", "intercomRegion", "ghcr.io/dunialabs/mcp-servers/intercom:latest"],
@@ -624,6 +655,13 @@ If you prefer running servers directly without Docker:
     "google-docs": {
       "command": "node",
       "args": ["/path/to/peta-mcp-servers/mcp-google-docs/dist/stdio.js"],
+      "env": {
+        "accessToken": "ya29.xxx..."
+      }
+    },
+    "gmail": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-gmail/dist/stdio.js"],
       "env": {
         "accessToken": "ya29.xxx..."
       }
