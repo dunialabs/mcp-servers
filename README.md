@@ -338,6 +338,26 @@ An MCP server for Gmail integration, enabling AI assistants to read messages, se
 
 ---
 
+### 16. MCP Google Sheets Server
+**Directory:** `mcp-google-sheets/`
+
+An MCP server for Google Sheets integration, enabling AI assistants to read, write, and manage spreadsheet structure through Google Sheets API v4.
+
+**Features:**
+
+- 11 tools for Google Sheets operations
+- Spreadsheet operations (list spreadsheets, get metadata, create spreadsheet)
+- Values operations (read, batch read, update, append, clear)
+- Sheet structure operations (add sheet, delete sheet, duplicate sheet)
+- OAuth 2.0 token-based authentication with runtime token refresh notifications
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-google-sheets/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -355,6 +375,7 @@ peta-mcp-servers/
 ├── mcp-stripe/              # Stripe payment integration
 ├── mcp-google-docs/         # Google Docs integration
 ├── mcp-gmail/               # Gmail integration
+├── mcp-google-sheets/       # Google Sheets integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -416,7 +437,8 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Canva | `ghcr.io/dunialabs/mcp-servers/canva` | v1.0.0 |
 | Stripe | `ghcr.io/dunialabs/mcp-servers/stripe` | v1.0.0 |
 | Google Docs | `ghcr.io/dunialabs/mcp-servers/google-docs` | v1.0.0 |
-| Gmail | `ghcr.io/dunialabs/mcp-servers/gmail` | v0.2.0 |
+| Gmail | `ghcr.io/dunialabs/mcp-servers/gmail` | v1.0.0 |
+| Google Sheets | `ghcr.io/dunialabs/mcp-servers/google-sheets` | v1.0.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
@@ -662,6 +684,13 @@ If you prefer running servers directly without Docker:
     "gmail": {
       "command": "node",
       "args": ["/path/to/peta-mcp-servers/mcp-gmail/dist/stdio.js"],
+      "env": {
+        "accessToken": "ya29.xxx..."
+      }
+    },
+    "google-sheets": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-google-sheets/dist/stdio.js"],
       "env": {
         "accessToken": "ya29.xxx..."
       }
