@@ -32,6 +32,7 @@ import {
   DeleteSheetInputSchema,
   DuplicateSheetInputSchema,
 } from './tools/sheets.js';
+import { validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
 
 function getServerVersion(): string {
@@ -79,6 +80,11 @@ export class GoogleSheetsMcpServer {
 
       if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
         logger.error('[Token] Invalid token in notifications/token/update');
+        return;
+      }
+
+      if (!validateTokenFormat(newToken)) {
+        logger.error('[Token] Invalid token format in notifications/token/update');
         return;
       }
 

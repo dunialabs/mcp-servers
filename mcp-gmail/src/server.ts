@@ -31,6 +31,7 @@ import {
   SendDraftInputSchema,
 } from './tools/drafts.js';
 import { gmailListLabels, ListLabelsInputSchema } from './tools/labels.js';
+import { validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
 
 function getServerVersion(): string {
@@ -78,6 +79,11 @@ export class GmailMcpServer {
 
       if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
         logger.error('[Token] Invalid token in notifications/token/update');
+        return;
+      }
+
+      if (!validateTokenFormat(newToken)) {
+        logger.error('[Token] Invalid token format in notifications/token/update');
         return;
       }
 
