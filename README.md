@@ -358,6 +358,28 @@ An MCP server for Google Sheets integration, enabling AI assistants to read, wri
 
 ---
 
+### 17. MCP Slack Server
+**Directory:** `mcp-slack/`
+
+An MCP server for Slack integration, enabling AI assistants to work with messages, channels, users, reactions, and channel administration using Slack Web API.
+
+**Features:**
+
+- 17 tools for Slack operations
+- Message operations (send, list, get, thread replies, update, delete)
+- Channel operations (list/info, set topic, create, archive)
+- Membership operations (invite user, kick user)
+- User operations (list users, get user info)
+- Reaction operations (add/remove reaction)
+- User-token based authentication with runtime token refresh notifications
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-slack/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -376,6 +398,7 @@ peta-mcp-servers/
 ├── mcp-google-docs/         # Google Docs integration
 ├── mcp-gmail/               # Gmail integration
 ├── mcp-google-sheets/       # Google Sheets integration
+├── mcp-slack/               # Slack integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -439,6 +462,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Google Docs | `ghcr.io/dunialabs/mcp-servers/google-docs` | v1.0.0 |
 | Gmail | `ghcr.io/dunialabs/mcp-servers/gmail` | v1.0.0 |
 | Google Sheets | `ghcr.io/dunialabs/mcp-servers/google-sheets` | v1.0.0 |
+| Slack | `ghcr.io/dunialabs/mcp-servers/slack` | v1.0.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
@@ -568,6 +592,13 @@ Using GitHub Container Registry images provides better reliability and automatic
         "accessToken": "ya29.xxx..."
       }
     },
+    "slack": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/slack:latest"],
+      "env": {
+        "accessToken": "xoxp-xxx..."
+      }
+    },
     "intercom": {
       "command": "docker",
       "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "-e", "intercomRegion", "ghcr.io/dunialabs/mcp-servers/intercom:latest"],
@@ -693,6 +724,13 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-google-sheets/dist/stdio.js"],
       "env": {
         "accessToken": "ya29.xxx..."
+      }
+    },
+    "slack": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-slack/dist/stdio.js"],
+      "env": {
+        "accessToken": "xoxp-xxx..."
       }
     },
     "intercom": {
