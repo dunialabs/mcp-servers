@@ -2,7 +2,7 @@
 
 HubSpot MCP server for PETA ecosystem with STDIO transport.
 
-## Tools (24)
+## Tools (36)
 
 1. `hubspotGetContact`
 2. `hubspotSearchContacts`
@@ -28,6 +28,18 @@ HubSpot MCP server for PETA ecosystem with STDIO transport.
 22. `hubspotGetPipelineSummary`
 23. `hubspotGetOwnerWorkload`
 24. `hubspotValidateRecordRequiredFields`
+25. `hubspotArchiveContact`
+26. `hubspotArchiveCompany`
+27. `hubspotArchiveDeal`
+28. `hubspotArchiveTicket`
+29. `hubspotRemoveAssociation`
+30. `hubspotBatchUpdateContacts`
+31. `hubspotBatchUpdateCompanies`
+32. `hubspotBatchUpdateDeals`
+33. `hubspotBatchUpdateTickets`
+34. `hubspotListDealPipelines`
+35. `hubspotListTicketPipelines`
+36. `hubspotListPipelineStages`
 
 ## OAuth Scope
 
@@ -143,6 +155,9 @@ PetaConsole / Core will automatically:
 
 - This server retries HubSpot 429 and 5xx responses with exponential backoff.
 - `hubspotAssociateRecords` uses HubSpot default association API.
+- `hubspotRemoveAssociation` removes default association using HubSpot CRM v4 associations API.
 - `hubspotCreateNoteEngagement` creates a note first, then associates the note to target records.
 - `hubspotValidateRecordRequiredFields` supports default required field checks and custom overrides.
 - `hubspotCreateTicket` may require `hs_pipeline_stage` in addition to `subject` depending on ticket pipeline settings in your portal.
+- Archive tools (`hubspotArchive*`) use HubSpot object archive semantics (soft delete/archive behavior).
+- Batch update tools (`hubspotBatchUpdate*`) support up to 100 records per request.

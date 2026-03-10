@@ -51,11 +51,33 @@ import {
   CreateNoteEngagementInputSchema,
   GetAssociationsInputSchema,
   GetObjectPropertiesInputSchema,
+  RemoveAssociationInputSchema,
   hubspotAssociateRecords,
   hubspotCreateNoteEngagement,
   hubspotGetAssociations,
   hubspotGetObjectProperties,
+  hubspotRemoveAssociation,
 } from './tools/associations.js';
+import {
+  ArchiveCompanyInputSchema,
+  ArchiveContactInputSchema,
+  ArchiveDealInputSchema,
+  ArchiveTicketInputSchema,
+  hubspotArchiveCompany,
+  hubspotArchiveContact,
+  hubspotArchiveDeal,
+  hubspotArchiveTicket,
+} from './tools/archive.js';
+import {
+  BatchUpdateCompaniesInputSchema,
+  BatchUpdateContactsInputSchema,
+  BatchUpdateDealsInputSchema,
+  BatchUpdateTicketsInputSchema,
+  hubspotBatchUpdateCompanies,
+  hubspotBatchUpdateContacts,
+  hubspotBatchUpdateDeals,
+  hubspotBatchUpdateTickets,
+} from './tools/batch.js';
 import {
   GetOwnerWorkloadInputSchema,
   GetPipelineSummaryInputSchema,
@@ -64,6 +86,14 @@ import {
   hubspotGetPipelineSummary,
   hubspotValidateRecordRequiredFields,
 } from './tools/helpers.js';
+import {
+  ListDealPipelinesInputSchema,
+  ListPipelineStagesInputSchema,
+  ListTicketPipelinesInputSchema,
+  hubspotListDealPipelines,
+  hubspotListPipelineStages,
+  hubspotListTicketPipelines,
+} from './tools/pipelines.js';
 import { validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
 
@@ -169,6 +199,15 @@ export class HubSpotMcpServer {
       async (params) => hubspotUpdateContact(params)
     );
     this.server.registerTool(
+      'hubspotArchiveContact',
+      {
+        title: 'HubSpot - Archive Contact',
+        description: 'Archive a contact by record ID.',
+        inputSchema: ArchiveContactInputSchema,
+      },
+      async (params) => hubspotArchiveContact(params)
+    );
+    this.server.registerTool(
       'hubspotUpsertContactByEmail',
       {
         title: 'HubSpot - Upsert Contact By Email',
@@ -214,6 +253,15 @@ export class HubSpotMcpServer {
       },
       async (params) => hubspotUpdateCompany(params)
     );
+    this.server.registerTool(
+      'hubspotArchiveCompany',
+      {
+        title: 'HubSpot - Archive Company',
+        description: 'Archive a company by record ID.',
+        inputSchema: ArchiveCompanyInputSchema,
+      },
+      async (params) => hubspotArchiveCompany(params)
+    );
 
     this.server.registerTool(
       'hubspotGetDeal',
@@ -250,6 +298,15 @@ export class HubSpotMcpServer {
         inputSchema: UpdateDealInputSchema,
       },
       async (params) => hubspotUpdateDeal(params)
+    );
+    this.server.registerTool(
+      'hubspotArchiveDeal',
+      {
+        title: 'HubSpot - Archive Deal',
+        description: 'Archive a deal by record ID.',
+        inputSchema: ArchiveDealInputSchema,
+      },
+      async (params) => hubspotArchiveDeal(params)
     );
 
     this.server.registerTool(
@@ -288,6 +345,15 @@ export class HubSpotMcpServer {
       },
       async (params) => hubspotUpdateTicket(params)
     );
+    this.server.registerTool(
+      'hubspotArchiveTicket',
+      {
+        title: 'HubSpot - Archive Ticket',
+        description: 'Archive a ticket by record ID.',
+        inputSchema: ArchiveTicketInputSchema,
+      },
+      async (params) => hubspotArchiveTicket(params)
+    );
 
     this.server.registerTool(
       'hubspotGetAssociations',
@@ -308,6 +374,15 @@ export class HubSpotMcpServer {
       async (params) => hubspotAssociateRecords(params)
     );
     this.server.registerTool(
+      'hubspotRemoveAssociation',
+      {
+        title: 'HubSpot - Remove Association',
+        description: 'Remove default association between two records.',
+        inputSchema: RemoveAssociationInputSchema,
+      },
+      async (params) => hubspotRemoveAssociation(params)
+    );
+    this.server.registerTool(
       'hubspotGetObjectProperties',
       {
         title: 'HubSpot - Get Object Properties',
@@ -324,6 +399,43 @@ export class HubSpotMcpServer {
         inputSchema: CreateNoteEngagementInputSchema,
       },
       async (params) => hubspotCreateNoteEngagement(params)
+    );
+
+    this.server.registerTool(
+      'hubspotBatchUpdateContacts',
+      {
+        title: 'HubSpot - Batch Update Contacts',
+        description: 'Batch update contacts by record IDs.',
+        inputSchema: BatchUpdateContactsInputSchema,
+      },
+      async (params) => hubspotBatchUpdateContacts(params)
+    );
+    this.server.registerTool(
+      'hubspotBatchUpdateCompanies',
+      {
+        title: 'HubSpot - Batch Update Companies',
+        description: 'Batch update companies by record IDs.',
+        inputSchema: BatchUpdateCompaniesInputSchema,
+      },
+      async (params) => hubspotBatchUpdateCompanies(params)
+    );
+    this.server.registerTool(
+      'hubspotBatchUpdateDeals',
+      {
+        title: 'HubSpot - Batch Update Deals',
+        description: 'Batch update deals by record IDs.',
+        inputSchema: BatchUpdateDealsInputSchema,
+      },
+      async (params) => hubspotBatchUpdateDeals(params)
+    );
+    this.server.registerTool(
+      'hubspotBatchUpdateTickets',
+      {
+        title: 'HubSpot - Batch Update Tickets',
+        description: 'Batch update tickets by record IDs.',
+        inputSchema: BatchUpdateTicketsInputSchema,
+      },
+      async (params) => hubspotBatchUpdateTickets(params)
     );
 
     this.server.registerTool(
@@ -354,7 +466,35 @@ export class HubSpotMcpServer {
       async (params) => hubspotValidateRecordRequiredFields(params)
     );
 
-    logger.info('[Server] Registered 24 HubSpot tools');
+    this.server.registerTool(
+      'hubspotListDealPipelines',
+      {
+        title: 'HubSpot - List Deal Pipelines',
+        description: 'List deal pipelines and stages.',
+        inputSchema: ListDealPipelinesInputSchema,
+      },
+      async (params) => hubspotListDealPipelines(params)
+    );
+    this.server.registerTool(
+      'hubspotListTicketPipelines',
+      {
+        title: 'HubSpot - List Ticket Pipelines',
+        description: 'List ticket pipelines and stages.',
+        inputSchema: ListTicketPipelinesInputSchema,
+      },
+      async (params) => hubspotListTicketPipelines(params)
+    );
+    this.server.registerTool(
+      'hubspotListPipelineStages',
+      {
+        title: 'HubSpot - List Pipeline Stages',
+        description: 'List stages for a specific deal or ticket pipeline.',
+        inputSchema: ListPipelineStagesInputSchema,
+      },
+      async (params) => hubspotListPipelineStages(params)
+    );
+
+    logger.info('[Server] Registered 36 HubSpot tools');
   }
 
   async connect(transport: Transport) {

@@ -23,6 +23,13 @@ export const AssociateRecordsInputSchema = {
   toObjectId: z.string().min(1).describe('Target object ID'),
 };
 
+export const RemoveAssociationInputSchema = {
+  fromObjectType: ObjectTypeSchema.describe('Source object type'),
+  fromObjectId: z.string().min(1).describe('Source object ID'),
+  toObjectType: ObjectTypeSchema.describe('Target object type'),
+  toObjectId: z.string().min(1).describe('Target object ID'),
+};
+
 export const GetObjectPropertiesInputSchema = {
   objectType: ObjectTypeSchema.describe('Object type'),
   archived: z.boolean().optional().describe('Include archived properties'),
@@ -55,6 +62,13 @@ export interface GetAssociationsParams {
 }
 
 export interface AssociateRecordsParams {
+  fromObjectType: z.infer<typeof ObjectTypeSchema>;
+  fromObjectId: string;
+  toObjectType: z.infer<typeof ObjectTypeSchema>;
+  toObjectId: string;
+}
+
+export interface RemoveAssociationParams {
   fromObjectType: z.infer<typeof ObjectTypeSchema>;
   fromObjectId: string;
   toObjectType: z.infer<typeof ObjectTypeSchema>;
@@ -108,6 +122,22 @@ async function associateDefault(params: AssociateRecordsParams, context: string)
   );
 }
 
+async function removeAssociationDefault(
+  params: RemoveAssociationParams,
+  context: string
+): Promise<void> {
+  await withHubSpotRetry(
+    () =>
+      callHubSpotApi(
+        `/crm/v4/objects/${params.fromObjectType}/${params.fromObjectId}/associations/${params.toObjectType}/${params.toObjectId}`,
+        {
+          method: 'DELETE',
+        }
+      ),
+    context
+  );
+}
+
 export async function hubspotGetAssociations(params: GetAssociationsParams) {
   const response = await withHubSpotRetry(
     () =>
@@ -152,6 +182,25 @@ export async function hubspotAssociateRecords(params: AssociateRecordsParams) {
           {
             success: true,
             association: params,
+          },
+          null,
+          2
+        ),
+      },
+    ],
+  };
+}
+
+export async function hubspotRemoveAssociation(params: RemoveAssociationParams) {
+  await removeAssociationDefault(params, 'hubspotRemoveAssociation');
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(
+          {
+            success: true,
+            removedAssociation: params,
           },
           null,
           2

@@ -387,12 +387,15 @@ An MCP server for HubSpot CRM integration, enabling AI assistants to work with c
 
 **Features:**
 
-- 24 tools for HubSpot operations
+- 36 tools for HubSpot operations
 - Contact operations (get, search, create, update, upsert by email)
 - Company operations (get, search, create, update)
 - Deal operations (get, search, create, update)
 - Ticket operations (get, search, create, update)
-- Association and metadata operations (get associations, create associations, get object properties)
+- Archive operations (archive contact, company, deal, ticket)
+- Association and metadata operations (get/create/remove associations, get object properties)
+- Batch operations (batch update for contacts, companies, deals, tickets)
+- Pipeline operations (list deal/ticket pipelines, list pipeline stages)
 - Engagement operations (create note engagement)
 - Helper tools (pipeline summary, owner workload, required-field validation)
 - OAuth token-based authentication with runtime token refresh notifications
