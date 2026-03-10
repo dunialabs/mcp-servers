@@ -380,6 +380,30 @@ An MCP server for Slack integration, enabling AI assistants to work with message
 
 ---
 
+### 18. MCP HubSpot Server
+**Directory:** `mcp-hubspot/`
+
+An MCP server for HubSpot CRM integration, enabling AI assistants to work with contacts, companies, deals, tickets, associations, properties, and notes through HubSpot CRM APIs.
+
+**Features:**
+
+- 24 tools for HubSpot operations
+- Contact operations (get, search, create, update, upsert by email)
+- Company operations (get, search, create, update)
+- Deal operations (get, search, create, update)
+- Ticket operations (get, search, create, update)
+- Association and metadata operations (get associations, create associations, get object properties)
+- Engagement operations (create note engagement)
+- Helper tools (pipeline summary, owner workload, required-field validation)
+- OAuth token-based authentication with runtime token refresh notifications
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-hubspot/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -399,6 +423,7 @@ peta-mcp-servers/
 ├── mcp-gmail/               # Gmail integration
 ├── mcp-google-sheets/       # Google Sheets integration
 ├── mcp-slack/               # Slack integration
+├── mcp-hubspot/             # HubSpot CRM integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -463,6 +488,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Gmail | `ghcr.io/dunialabs/mcp-servers/gmail` | v1.0.0 |
 | Google Sheets | `ghcr.io/dunialabs/mcp-servers/google-sheets` | v1.0.0 |
 | Slack | `ghcr.io/dunialabs/mcp-servers/slack` | v1.0.0 |
+| HubSpot | `ghcr.io/dunialabs/mcp-servers/hubspot` | v1.0.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
@@ -599,6 +625,13 @@ Using GitHub Container Registry images provides better reliability and automatic
         "accessToken": "xoxp-xxx..."
       }
     },
+    "hubspot": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/hubspot:latest"],
+      "env": {
+        "accessToken": "your_hubspot_oauth_token"
+      }
+    },
     "intercom": {
       "command": "docker",
       "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "-e", "intercomRegion", "ghcr.io/dunialabs/mcp-servers/intercom:latest"],
@@ -731,6 +764,13 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-slack/dist/stdio.js"],
       "env": {
         "accessToken": "xoxp-xxx..."
+      }
+    },
+    "hubspot": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-hubspot/dist/stdio.js"],
+      "env": {
+        "accessToken": "your_hubspot_oauth_token"
       }
     },
     "intercom": {
