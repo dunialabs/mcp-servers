@@ -407,6 +407,26 @@ An MCP server for HubSpot CRM integration, enabling AI assistants to work with c
 
 ---
 
+### 19. MCP Pipedrive Server
+**Directory:** `mcp-pipedrive/`
+
+An MCP server for Pipedrive CRM integration, enabling AI assistants to work with deals, persons, organizations, activities, leads, notes, products, pipelines, users, and recents/search APIs.
+
+**Features:**
+
+- 57 tools for Pipedrive operations
+- Deals, contacts, organizations, activities, leads, notes, and products CRUD/search coverage
+- Pipeline and stage discovery tools
+- Cross-object search and recents feed tools
+- OAuth token + `apiDomain` runtime model with token update notification support
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-pipedrive/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -427,6 +447,7 @@ peta-mcp-servers/
 ├── mcp-google-sheets/       # Google Sheets integration
 ├── mcp-slack/               # Slack integration
 ├── mcp-hubspot/             # HubSpot CRM integration
+├── mcp-pipedrive/           # Pipedrive CRM integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -492,6 +513,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Google Sheets | `ghcr.io/dunialabs/mcp-servers/google-sheets` | v1.0.0 |
 | Slack | `ghcr.io/dunialabs/mcp-servers/slack` | v1.0.0 |
 | HubSpot | `ghcr.io/dunialabs/mcp-servers/hubspot` | v1.0.0 |
+| Pipedrive | `ghcr.io/dunialabs/mcp-servers/pipedrive` | v1.0.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
@@ -635,6 +657,14 @@ Using GitHub Container Registry images provides better reliability and automatic
         "accessToken": "your_hubspot_oauth_token"
       }
     },
+    "pipedrive": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "-e", "apiDomain", "ghcr.io/dunialabs/mcp-servers/pipedrive:latest"],
+      "env": {
+        "accessToken": "your_pipedrive_oauth_token",
+        "apiDomain": "https://api.pipedrive.com"
+      }
+    },
     "intercom": {
       "command": "docker",
       "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "-e", "intercomRegion", "ghcr.io/dunialabs/mcp-servers/intercom:latest"],
@@ -774,6 +804,14 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-hubspot/dist/stdio.js"],
       "env": {
         "accessToken": "your_hubspot_oauth_token"
+      }
+    },
+    "pipedrive": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-pipedrive/dist/stdio.js"],
+      "env": {
+        "accessToken": "your_pipedrive_oauth_token",
+        "apiDomain": "https://api.pipedrive.com"
       }
     },
     "intercom": {
