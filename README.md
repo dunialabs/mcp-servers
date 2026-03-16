@@ -427,6 +427,28 @@ An MCP server for Pipedrive CRM integration, enabling AI assistants to work with
 
 ---
 
+### 20. MCP Teams Server
+**Directory:** `mcp-teams/`
+
+An MCP server for Microsoft Teams integration, enabling AI assistants to work with teams, channels, chats, messages, reactions, and users via Microsoft Graph.
+
+**Features:**
+
+- 24 tools for Teams operations
+- Teams operations (list joined teams, get team, list team members, list team channels)
+- Channel operations (get channel, list channel messages/replies, reply to message thread)
+- Chat operations (list/get/create chats, list/send/update/delete chat messages)
+- Message operations (send/update/delete channel messages, get message/thread, add/remove reactions)
+- User operations (list users, search users)
+- OAuth token-based authentication with runtime token refresh notifications
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-teams/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -448,6 +470,7 @@ peta-mcp-servers/
 ├── mcp-slack/               # Slack integration
 ├── mcp-hubspot/             # HubSpot CRM integration
 ├── mcp-pipedrive/           # Pipedrive CRM integration
+├── mcp-teams/               # Microsoft Teams integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -812,6 +835,13 @@ If you prefer running servers directly without Docker:
       "env": {
         "accessToken": "your_pipedrive_oauth_token",
         "apiDomain": "https://api.pipedrive.com"
+      }
+    },
+    "teams": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-teams/dist/stdio.js"],
+      "env": {
+        "accessToken": "your_microsoft_graph_oauth_token"
       }
     },
     "intercom": {
