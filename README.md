@@ -441,11 +441,35 @@ An MCP server for Microsoft Teams integration, enabling AI assistants to work wi
 - Message operations (send/update/delete channel messages, get message/thread, add/remove reactions)
 - User operations (list users, search users)
 - OAuth token-based authentication with runtime token refresh notifications
+- Enterprise tenants typically require one-time admin consent before normal users can authorize
 - STDIO transport
 - Docker support (amd64/arm64)
 - Complete TypeScript with strict typing and Zod validation
 
 [View Documentation →](./mcp-teams/README.md)
+
+---
+
+### 21. MCP Google Forms Server
+**Directory:** `mcp-google-forms/`
+
+An MCP server for Google Forms integration, enabling AI assistants to create forms, update questions, manage publish settings, and read responses through Google Forms API.
+
+**Features:**
+
+- 12 tools for Google Forms operations
+- Form operations (create, get, batch update, set publish settings)
+- Question helper operations (add text question, add multiple-choice question)
+- Response operations (list, get, list since timestamp)
+- Discovery operations (list forms via Drive metadata, extract formId from URL, summary)
+- Tool naming follows `gforms...` convention (for example `gformsCreateForm`)
+- Requires Forms API scopes plus Drive metadata scope for form discovery
+- OAuth token-based authentication with runtime token refresh notifications
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-google-forms/README.md)
 
 ---
 
@@ -471,6 +495,7 @@ peta-mcp-servers/
 ├── mcp-hubspot/             # HubSpot CRM integration
 ├── mcp-pipedrive/           # Pipedrive CRM integration
 ├── mcp-teams/               # Microsoft Teams integration
+├── mcp-google-forms/        # Google Forms integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -537,6 +562,8 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Slack | `ghcr.io/dunialabs/mcp-servers/slack` | v1.0.0 |
 | HubSpot | `ghcr.io/dunialabs/mcp-servers/hubspot` | v1.0.0 |
 | Pipedrive | `ghcr.io/dunialabs/mcp-servers/pipedrive` | v1.0.0 |
+| Teams | `ghcr.io/dunialabs/mcp-servers/teams` | v0.1.0 |
+| Google Forms | `ghcr.io/dunialabs/mcp-servers/google-forms` | v0.1.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
@@ -688,6 +715,20 @@ Using GitHub Container Registry images provides better reliability and automatic
         "apiDomain": "https://api.pipedrive.com"
       }
     },
+    "teams": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/teams:latest"],
+      "env": {
+        "accessToken": "your_microsoft_graph_oauth_token"
+      }
+    },
+    "google-forms": {
+      "command": "docker",
+      "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "ghcr.io/dunialabs/mcp-servers/google-forms:latest"],
+      "env": {
+        "accessToken": "ya29.xxx..."
+      }
+    },
     "intercom": {
       "command": "docker",
       "args": ["run", "--pull=always", "-i", "--rm", "-e", "accessToken", "-e", "intercomRegion", "ghcr.io/dunialabs/mcp-servers/intercom:latest"],
@@ -706,6 +747,14 @@ Using GitHub Container Registry images provides better reliability and automatic
   }
 }
 ```
+
+Teams configuration notes:
+- `accessToken` must be a delegated Microsoft Graph token.
+- In enterprise tenants, admins usually need to grant consent once before regular users can authorize.
+
+Google Forms configuration notes:
+- `accessToken` must include Forms scopes and Drive metadata scope.
+- Current tool names use `gforms...` prefix (for example `gformsCreateForm`).
 
 ### Option 2: Direct Node.js
 
@@ -842,6 +891,13 @@ If you prefer running servers directly without Docker:
       "args": ["/path/to/peta-mcp-servers/mcp-teams/dist/stdio.js"],
       "env": {
         "accessToken": "your_microsoft_graph_oauth_token"
+      }
+    },
+    "google-forms": {
+      "command": "node",
+      "args": ["/path/to/peta-mcp-servers/mcp-google-forms/dist/stdio.js"],
+      "env": {
+        "accessToken": "ya29.xxx..."
       }
     },
     "intercom": {
