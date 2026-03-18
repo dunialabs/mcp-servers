@@ -6,6 +6,14 @@ const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const FORMS_BASE = 'https://forms.googleapis.com/v1';
 const DRIVE_BASE = 'https://www.googleapis.com/drive/v3';
 
+function parseRetryAfterSeconds(value: string | null): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 interface GoogleErrorEnvelope {
   error?: {
     code?: number;
@@ -64,7 +72,7 @@ async function callGoogleApi<T>(base: string, path: string, options: RequestOpti
 
   if (!response.ok) {
     const envelope = (typeof data === 'object' && data !== null ? data : {}) as GoogleErrorEnvelope;
-    const retryAfterRaw = response.headers.get('retry-after');
+    const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get('retry-after'));
 
     throw {
       status: response.status,
@@ -72,7 +80,7 @@ async function callGoogleApi<T>(base: string, path: string, options: RequestOpti
       googleStatus: envelope.error?.status,
       message: envelope.error?.message || 'Google API request failed',
       details: envelope.error?.details ?? data,
-      retryAfterSeconds: retryAfterRaw ? Number(retryAfterRaw) : undefined,
+      retryAfterSeconds,
     };
   }
 
@@ -121,7 +129,9 @@ export async function withFormsRetry<T>(
 
       const status = typeof parsed.status === 'number' ? parsed.status : undefined;
       const retryAfterSeconds =
-        typeof parsed.retryAfterSeconds === 'number' ? parsed.retryAfterSeconds : undefined;
+        typeof parsed.retryAfterSeconds === 'number' && Number.isFinite(parsed.retryAfterSeconds)
+          ? parsed.retryAfterSeconds
+          : undefined;
       const retryable = status !== undefined && RETRYABLE_STATUS.has(status);
 
       if (!retryable || attempt === maxAttempts) {

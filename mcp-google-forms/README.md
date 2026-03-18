@@ -115,5 +115,9 @@ Node.js configuration:
 - `gformsListForms` depends on Drive metadata scope to discover `formId`.
 - `gformsExtractFormId` helps parse IDs from edit URLs quickly.
 - `gformsListResponsesSince` expects RFC3339 UTC timestamp input.
+- `gformsGetFormSummary` supports `latestResponseScanLimit` (default `200`) to bound
+  full-response scanning cost when `includeLatestResponse=true`.
+- `gformsGetFormSummary` returns `latestResponseMeta` with `scanLimit`, `scannedCount`,
+  and `reachedLimit` so callers can detect partial scans.
 - For Forms API response filters, this implementation uses unquoted timestamp syntax
   (e.g. `timestamp >= 2026-03-17T00:00:00Z`) based on live API validation.

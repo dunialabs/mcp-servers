@@ -35,6 +35,13 @@ export const SetPublishSettingsInputSchema = {
 export const GetFormSummaryInputSchema = {
   formId: z.string().min(1).describe('Google Form ID'),
   includeLatestResponse: z.boolean().optional().describe('Include the latest response preview'),
+  latestResponseScanLimit: z
+    .number()
+    .int()
+    .min(1)
+    .max(5000)
+    .optional()
+    .describe('Max responses to scan when includeLatestResponse=true. Default 200'),
 };
 
 interface FormInfo {
@@ -95,6 +102,7 @@ export interface SetPublishSettingsParams {
 export interface GetFormSummaryParams {
   formId: string;
   includeLatestResponse?: boolean;
+  latestResponseScanLimit?: number;
 }
 
 function summarizeForm(form: FormShape | null | undefined) {
@@ -133,9 +141,17 @@ function summarizeResponse(response: Record<string, unknown> | null | undefined)
   };
 }
 
-async function fetchLatestResponse(formId: string): Promise<Record<string, unknown> | null> {
+interface LatestResponseResult {
+  latestResponse: Record<string, unknown> | null;
+  scannedCount: number;
+  reachedLimit: boolean;
+}
+
+async function fetchLatestResponse(formId: string, scanLimit: number): Promise<LatestResponseResult> {
   let pageToken: string | undefined;
   let latest: Record<string, unknown> | null = null;
+  let scannedCount = 0;
+  let reachedLimit = false;
 
   do {
     const list = await withFormsRetry(
@@ -150,22 +166,35 @@ async function fetchLatestResponse(formId: string): Promise<Record<string, unkno
     );
 
     for (const item of list.responses ?? []) {
+      scannedCount += 1;
       if (!latest) {
         latest = item;
-        continue;
+      } else {
+        const currentTs = String(item.lastSubmittedTime ?? item.createTime ?? '');
+        const latestTs = String(latest.lastSubmittedTime ?? latest.createTime ?? '');
+        if (currentTs > latestTs) {
+          latest = item;
+        }
       }
 
-      const currentTs = String(item.lastSubmittedTime ?? item.createTime ?? '');
-      const latestTs = String(latest.lastSubmittedTime ?? latest.createTime ?? '');
-      if (currentTs > latestTs) {
-        latest = item;
+      if (scannedCount >= scanLimit) {
+        reachedLimit = true;
+        break;
       }
+    }
+
+    if (reachedLimit) {
+      break;
     }
 
     pageToken = list.nextPageToken;
   } while (pageToken);
 
-  return latest;
+  return {
+    latestResponse: latest,
+    scannedCount,
+    reachedLimit,
+  };
 }
 
 export async function formsSetPublishSettings(params: SetPublishSettingsParams) {
@@ -321,9 +350,17 @@ export async function formsGetFormSummary(params: GetFormSummaryParams) {
     | Record<string, unknown>
     | undefined;
 
+  const scanLimit = params.latestResponseScanLimit ?? 200;
   let latestResponse: Record<string, unknown> | null = null;
+  let latestResponseMeta: Record<string, unknown> | null = null;
   if (params.includeLatestResponse ?? false) {
-    latestResponse = await fetchLatestResponse(params.formId);
+    const latest = await fetchLatestResponse(params.formId, scanLimit);
+    latestResponse = latest.latestResponse;
+    latestResponseMeta = {
+      scanLimit,
+      scannedCount: latest.scannedCount,
+      reachedLimit: latest.reachedLimit,
+    };
   }
 
   return {
@@ -342,6 +379,7 @@ export async function formsGetFormSummary(params: GetFormSummaryParams) {
             isPublished: publishState?.isPublished ?? null,
             isAcceptingResponses: publishState?.isAcceptingResponses ?? null,
             latestResponse: summarizeResponse(latestResponse),
+            latestResponseMeta,
           },
           null,
           2

@@ -1,11 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { readFileSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
+import { getServerVersion } from './utils/version.js';
 import {
   AddMultipleChoiceQuestionInputSchema,
   AddTextQuestionInputSchema,
@@ -36,19 +34,6 @@ import {
   formsExtractFormId,
   formsListForms,
 } from './tools/discovery.js';
-
-function getServerVersion(): string {
-  try {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const packageJsonPath = path.resolve(__dirname, '..', 'package.json');
-    const raw = readFileSync(packageJsonPath, 'utf8');
-    const pkg = JSON.parse(raw) as { version?: string };
-    return pkg.version || '0.0.0';
-  } catch {
-    return '0.0.0';
-  }
-}
 
 export class GoogleFormsMcpServer {
   private server: McpServer;
