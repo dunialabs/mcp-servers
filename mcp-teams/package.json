@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-teams",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Microsoft Teams MCP Server for PETA ecosystem with STDIO transport. Provides teams/channels/chats/messages/users tools via Microsoft Graph.",
   "main": "dist/stdio.js",
   "type": "module",
