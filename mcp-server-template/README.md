@@ -99,6 +99,39 @@ docker run -i --rm your-org/mcp-your-server:latest
 IMAGE_NAME="your-org/mcp-your-server"  # Change this!
 ```
 
+### Docker Build vs GHCR Publish
+
+Use local Docker build for testing, and use Git tags to trigger GHCR publishing.
+
+#### Local build (test only, no remote publish)
+
+```bash
+# Build local image tags (version + latest)
+./build-docker.sh
+
+# Run local image
+docker run -i --rm your-org/mcp-your-server:latest
+```
+
+#### Automated GHCR publish via workflow
+
+This repo uses:
+- `.github/workflows/publish-mcp-package.yml`
+
+Trigger rule:
+- Push a tag in this format: `mcp-<project>-vX.Y.Z`
+- Example: `mcp-google-forms-v0.1.0`
+
+```bash
+# Example release trigger
+git tag mcp-your-server-v1.0.0
+git push origin mcp-your-server-v1.0.0
+```
+
+Notes:
+- `<project>/package.json` version must match `X.Y.Z`, otherwise workflow fails.
+- Workflow builds and pushes multi-arch images (`linux/amd64`, `linux/arm64`) and updates `:latest`.
+
 ### Option 2: Direct Node.js (Recommended for Development)
 
 #### 1. Install Dependencies
@@ -109,7 +142,7 @@ npm install
 
 **Dependency Overview**:
 - **Runtime Dependencies** (4):
-  - `@modelcontextprotocol/sdk@^1.21.0` - MCP core library (latest version)
+  - `@modelcontextprotocol/sdk@^1.23.0` - MCP core library (latest version)
   - `dotenv` - Environment variable management
   - `zod` - Runtime type validation (auto-converts to JSON Schema)
   - `https-proxy-agent` - Proxy support (optional, for network environments)
@@ -217,7 +250,7 @@ Add to your Claude Desktop configuration file:
   "mcpServers": {
     "my-server": {
       "command": "node",
-      "args": ["/absolute/path/to/mcp-server-template/dist/index.js"],
+      "args": ["/absolute/path/to/mcp-server-template/dist/stdio.js"],
       "env": {
         "NODE_ENV": "production"
       }
@@ -233,7 +266,7 @@ Or use tsx in development mode:
   "mcpServers": {
     "my-server-dev": {
       "command": "npx",
-      "args": ["tsx", "/absolute/path/to/mcp-server-template/src/index.ts"],
+      "args": ["tsx", "/absolute/path/to/mcp-server-template/src/stdio.ts"],
       "env": {
         "NODE_ENV": "development"
       }
@@ -489,6 +522,9 @@ This template implements all MCP best practices:
    - Prefix optional if all tools belong to one service
    - Examples: `echoMessage`, `performCalculation`
 
+For production integrations, keep one stable service prefix style across all tools.
+Example: use `gsheets...` or `gforms...` consistently, do not mix styles in one server.
+
 **Breaking Change Notice**:
 - If you change tool names (e.g., snake_case → camelCase), bump minor version (1.0.0 → 1.1.0)
 - Add breaking change notice in README:
@@ -607,6 +643,13 @@ Every MCP server README should include:
 8. **Security**: Best practices, access modes
 9. **License**: MIT or other
 
+Also keep these three artifacts consistent:
+- Tool list in README
+- Tool registration names in `src/server.ts`
+- Planning/spec document tool list (if you maintain one)
+
+Mismatch between these three is a common source of release-time regressions.
+
 #### 4.2 Breaking Change Notice
 When introducing breaking changes, add prominent notice at top of README:
 
@@ -670,7 +713,7 @@ else
   export DATABASE_URL="${DATABASE_URL//localhost/$GATEWAY_IP}"
 fi
 
-exec node dist/index.js
+exec node dist/stdio.js
 ```
 
 ### ✅ 7. Error Handling Standards
@@ -694,10 +737,18 @@ export enum AppErrorCode {
   InternalError = ErrorCode.InternalError,  // -32603
 
   // Custom errors (avoid conflicts)
-  ResourceNotFound = -32010,
+  NotFound = -32010,
   OperationFailed = -32011,
 }
 ```
+
+#### 7.3 Authentication and Token Error Mapping
+
+For OAuth/API token servers:
+
+- Prefer token update payload fields in this order: `accessToken ?? token`
+- Map token missing/expired errors to `AuthenticationFailed (-32030)`, not `InternalError`
+- Map permission/scope failures to `PermissionDenied (-32031)`
 
 ### ✅ 8. Input Validation Standards
 
@@ -718,6 +769,16 @@ export async function myTool(args: unknown) {
   // ... implementation
 }
 ```
+
+#### 8.1 Pagination Contract Must Match Endpoint Version
+
+Before shipping a list/search tool, verify pagination parameters match the real endpoint contract:
+
+- Use cursor only on cursor-based endpoints
+- Use offset/start only on offset-based endpoints
+- Expose continuation params in tool input if API is pageable
+
+Do not assume one pagination style works across v1/v2 APIs.
 
 ### ✅ 9. Testing Standards
 
@@ -746,6 +807,15 @@ describe('myTool', () => {
 4. **Query Limits**: Set row limits, timeouts for database operations
 5. **Error Messages**: Don't expose sensitive information in errors
 
+### ✅ 11. OAuth and Consent Flow Notes
+
+For enterprise providers (for example Microsoft Teams), some delegated scopes require tenant admin consent.
+
+Document this explicitly in project README:
+- What users see before admin consent (for example `Need admin approval`)
+- Required flow (`admin grants consent once -> users authorize -> Core injects token`)
+- Whether personal account login is supported or not
+
 ---
 
 ## 🧪 Testing
@@ -757,6 +827,9 @@ npm test
 # Watch mode
 npm run test:watch
 ```
+
+This template already includes a runnable example test:
+- `tests/tools/echo.test.ts`
 
 Test file example (`tests/tools/echo.test.ts`):
 
@@ -811,11 +884,18 @@ export enum AppErrorCode {
   InternalError = ErrorCode.InternalError,  // -32603
 
   // Custom errors (starting from -32010)
-  ResourceNotFound = -32010,
+  NotFound = -32010,
   OperationFailed = -32011,
   ValidationFailed = -32012,
 }
 ```
+
+The template also includes HTTP-to-MCP mapping helpers in `src/utils/errors.ts`:
+
+- `mapHttpStatusToAppErrorCode(status)`
+- `createHttpStatusError(status, message, data?)`
+
+Use them to normalize API errors (401/403/404/429/5xx) consistently.
 
 ### Using in Tools
 

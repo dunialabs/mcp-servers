@@ -1,28 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { echoTool } from '../../src/tools/echo.js';
 
 describe('echoTool', () => {
-  it('should echo a simple message', async () => {
-    const result = await echoTool({ message: 'Hello, World!' });
-    expect(result).toBe('Echo: Hello, World!');
+  it('echoes a plain message', async () => {
+    const result = await echoTool({ message: 'test', uppercase: false, repeat: 1 });
+    expect(result.content[0].text).toBe('Echo: test');
   });
 
-  it('should convert message to uppercase when requested', async () => {
-    const result = await echoTool({ message: 'test', uppercase: true });
-    expect(result).toBe('Echo: TEST');
+  it('uppercases message when requested', async () => {
+    const result = await echoTool({ message: 'test', uppercase: true, repeat: 1 });
+    expect(result.content[0].text).toBe('Echo: TEST');
   });
 
-  it('should repeat message when requested', async () => {
-    const result = await echoTool({ message: 'Hi', repeat: 3 });
-    expect(result).toBe('Echo: Hi\nHi\nHi');
-  });
-
-  it('should throw error for invalid input', async () => {
-    await expect(echoTool({ message: '' })).rejects.toThrow();
-  });
-
-  it('should throw error for message exceeding max length', async () => {
-    const longMessage = 'a'.repeat(10001);
-    await expect(echoTool({ message: longMessage })).rejects.toThrow();
+  it('repeats message when requested', async () => {
+    const result = await echoTool({ message: 'Hi', uppercase: false, repeat: 3 });
+    expect(result.content[0].text).toBe('Echo: Hi\nHi\nHi');
   });
 });

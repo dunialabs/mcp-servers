@@ -12,8 +12,9 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { echoTool } from './tools/echo.js';
-import { calculatorTool } from './tools/calculator.js';
+import { EchoInputSchema, echoTool } from './tools/echo.js';
+import { CalculatorInputSchema, calculatorTool } from './tools/calculator.js';
+import { validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
 import { handleUnknownError } from './utils/errors.js';
 import type { ServerConfig } from './types/index.js';
@@ -114,8 +115,54 @@ export class MCPServer {
       }
     );
 
+    this.setupNotificationHandlers();
     this.setupTools();
     this.setupResources();
+  }
+
+  private setupNotificationHandlers() {
+    // Optional runtime token update flow for OAuth/API integrations.
+    // Keep this handler in template so projects can enable dynamic token refresh
+    // without rewriting boilerplate. Projects that do not need tokens can remove it.
+    const tokenUpdateSchema = z
+      .object({
+        method: z.literal('notifications/token/update'),
+        params: z
+          .object({
+            accessToken: z.string().optional(),
+            token: z.string().optional(),
+            timestamp: z.number().optional(),
+          })
+          .catchall(z.unknown()),
+      })
+      .catchall(z.unknown());
+
+    type TokenUpdateNotification = z.infer<typeof tokenUpdateSchema>;
+
+    this.server.server.setNotificationHandler(
+      tokenUpdateSchema,
+      async (notification: TokenUpdateNotification) => {
+        const newToken =
+          notification?.params?.accessToken ?? notification?.params?.token;
+
+        if (!newToken || newToken.trim().length === 0) {
+          logger.error('[token] Invalid token in notifications/token/update');
+          return;
+        }
+
+        const normalized = newToken.startsWith('Bearer ')
+          ? newToken.slice(7).trim()
+          : newToken.trim();
+
+        if (!validateTokenFormat(normalized)) {
+          logger.error('[token] Invalid token format in notifications/token/update');
+          return;
+        }
+
+        process.env.accessToken = normalized;
+        logger.info('[token] accessToken updated via notification');
+      }
+    );
   }
 
   private setupTools() {
@@ -157,35 +204,14 @@ This tool can be used when users ask:
 - "Repeat what I said"
 - "Is the MCP server working?"
 </aliases>`,
-        inputSchema: {
-          message: z.string().min(1).max(10000).describe('The message to echo back'),
-          uppercase: z.boolean().optional().default(false).describe('Convert to uppercase'),
-          repeat: z
-            .number()
-            .int()
-            .min(1)
-            .max(10)
-            .optional()
-            .default(1)
-            .describe('Number of times to repeat (1-10)'),
-        },
+        inputSchema: EchoInputSchema,
       },
-      async ({ message, uppercase, repeat }) => {
-        logger.info(`[tools] Executing tool: echoMessage`);
+      async (params) => {
+        logger.info('[tools] Executing tool: echoMessage');
         try {
-          const result = await echoTool({ message, uppercase, repeat });
-          logger.debug(`[tools] Tool echoMessage executed successfully`);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: result,
-              },
-            ],
-          };
+          return await echoTool(params);
         } catch (error) {
-          // Convert to MCP error and re-throw (SDK will handle it properly)
-          throw handleUnknownError(error, 'echoMessage tool');
+          throw handleUnknownError(error, 'echoMessage');
         }
       }
     );
@@ -226,30 +252,14 @@ This tool can be used when users ask:
 - "Add these numbers"
 - "Perform this math operation"
 </aliases>`,
-        inputSchema: {
-          operation: z
-            .enum(['add', 'subtract', 'multiply', 'divide'])
-            .describe('Mathematical operation to perform'),
-          a: z.number().describe('First number'),
-          b: z.number().describe('Second number'),
-        },
+        inputSchema: CalculatorInputSchema,
       },
-      async ({ operation, a, b }) => {
-        logger.info(`[tools] Executing tool: performCalculation`);
+      async (params) => {
+        logger.info('[tools] Executing tool: performCalculation');
         try {
-          const result = await calculatorTool({ operation, a, b });
-          logger.debug(`[tools] Tool performCalculation executed successfully`);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: result,
-              },
-            ],
-          };
+          return await calculatorTool(params);
         } catch (error) {
-          // Convert to MCP error and re-throw (SDK will handle it properly)
-          throw handleUnknownError(error, 'performCalculation tool');
+          throw handleUnknownError(error, 'performCalculation');
         }
       }
     );

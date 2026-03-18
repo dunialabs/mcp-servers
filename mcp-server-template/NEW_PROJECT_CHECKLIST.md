@@ -69,7 +69,7 @@ async function main() {
   try {
     const server = new MCPServer({
       name: process.env.SERVER_NAME || 'your-project',  // ← Change default name
-      version: process.env.SERVER_VERSION || '1.0.0',
+      version: getVersion(),  // ← Read from package.json (single source of truth)
       description: 'Your project description',  // ← Change description
     });
 
@@ -109,7 +109,6 @@ Description...  // ← Change tool description
 ```bash
 # Server Configuration
 SERVER_NAME=your-project-name  # ← Change project name
-SERVER_VERSION=1.0.0
 
 # Your specific environment variables
 YOUR_API_KEY=your_api_key_here  # ← Add your environment variables
@@ -123,6 +122,8 @@ YOUR_API_KEY=your_api_key_here  # ← Add your environment variables
 - Tool documentation
 - Usage examples
 - Claude Desktop configuration paths
+- OAuth scopes grouped by category (`Required` vs `Optional`)
+- Admin-consent prerequisite (if provider requires tenant admin approval)
 
 ### 6. Dockerfile (if using)
 
@@ -189,7 +190,7 @@ import { yourTool } from './tools/your-tool.js';
 
 // Add to setupTools() method
 this.server.registerTool(
-  'yourToolName',  // camelCase
+  'yourServiceYourToolName',  // camelCase + stable service prefix
   {
     description: `<use_case>
 Use this tool to...
@@ -220,9 +221,7 @@ This tool can be used when users ask:
     try {
       const result = await yourTool({ param1 });
       logger.debug(`[tools] Tool yourToolName executed successfully`);
-      return {
-        content: [{ type: 'text', text: result }],
-      };
+      return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(`[tools] Error executing tool yourToolName:`, errorMessage);
@@ -269,17 +268,22 @@ Copy this checklist and check each item:
 - [ ] `tsconfig.json` - (usually no changes needed)
 
 ### Source Code
-- [ ] `src/index.ts` - Startup logs and project description
-- [ ] `src/server.ts` - SERVER_INSTRUCTIONS and tool registration
+- [ ] `src/stdio.ts` - Startup logs and project description (primary entry point)
+- [ ] `src/index.ts` - Startup logs and project description (secondary entry point, can delete if unused)
+- [ ] `src/server.ts` - SERVER_INSTRUCTIONS, tool registration, and optional `notifications/token/update` handler
 - [ ] `src/types/index.ts` - Add your type definitions
 - [ ] `src/tools/` - Delete example tools, create your tool implementations
 - [ ] `src/utils/` - Add your utility functions
+- [ ] Token update precedence is consistent: `accessToken ?? token`
+- [ ] API auth errors mapped correctly (`AuthenticationFailed` for token issues, `PermissionDenied` for scope)
+- [ ] Pagination params match endpoint contract (cursor vs offset/start)
 
 ### Tests
-- [ ] `tests/tools/` - Delete example tests, create your tests
+- [ ] `tests/tools/` - Replace template sample tests with your project tests
 
 ### Documentation
 - [ ] `README.md` - Completely update with your project documentation
+- [ ] Tool names and counts are consistent between README and `src/server.ts`
 - [ ] Delete `TEMPLATE_GUIDE.md`
 - [ ] Delete `NEW_PROJECT_CHECKLIST.md` (this file)
 
@@ -293,6 +297,7 @@ Copy this checklist and check each item:
 - [ ] `npm test` - Tests pass
 - [ ] `npm start` - Run successfully
 - [ ] Log output is correct (displays your project name)
+- [ ] Smoke test all tools at least once with a real token in `.env`
 
 ---
 
@@ -324,11 +329,18 @@ The logs should display:
   "mcpServers": {
     "your-project": {  // ← Your project name
       "command": "node",
-      "args": ["/absolute/path/to/your-project/dist/index.js"]
+      "args": ["/absolute/path/to/your-project/dist/stdio.js"]
     }
   }
 }
 ```
+
+### 4. Release Verification (GHCR Workflow)
+
+- [ ] `package.json` version matches release tag version
+- [ ] Tag format is `mcp-<project>-vX.Y.Z`
+- [ ] Push tag triggers `.github/workflows/publish-mcp-package.yml`
+- [ ] Verify GHCR has both `:<version>` and `:latest`
 
 ---
 
@@ -338,7 +350,7 @@ Using the new-weather project as an example:
 
 ### Modifications Made
 - `package.json`: name changed to "new-weather-mcp-server"
-- `src/index.ts`: logs changed to "Starting New Weather MCP Server"
+- `src/stdio.ts`: logs changed to "Starting New Weather MCP Server"
 - `src/server.ts`:
   - SERVER_INSTRUCTIONS changed to weather-related description
   - In setupTools(), deleted example tools, registered weather tools

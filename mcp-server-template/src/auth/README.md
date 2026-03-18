@@ -16,72 +16,70 @@ This directory contains authentication-related code for MCP servers that require
 - Doesn't require external API authentication
 - Uses static configuration only
 
-## Example: Token Management
+## Implementation
 
-Here's a simple token management module (`auth/token.ts`):
+The actual implementation is in `auth/token.ts`. It exports:
 
-```typescript
-/**
- * Token Management Module
- *
- * This module handles API token retrieval and validation.
- * The token can be updated at runtime via MCP notifications.
- */
-
-import { logger } from '../utils/logger.js';
-
-/**
- * Get the current API token from environment
- *
- * Token update flow:
- * 1. PETA Core sends notification with new token
- * 2. server.ts updates process.env.apiToken
- * 3. This function reads from process.env.apiToken
- */
-export function getToken(): string {
-  const token = process.env.apiToken;
-
-  if (!token) {
-    throw new Error(
-      'API token not found. Please set the apiToken environment variable.'
-    );
-  }
-
-  return token;
-}
-
-/**
- * Validate token format (optional)
- */
-export function validateToken(token: string): boolean {
-  // Add your token validation logic here
-  // Example: check prefix, length, format
-  if (!token || token.length < 10) {
-    logger.warn('Invalid token format');
-    return false;
-  }
-
-  return true;
-}
-```
+- `TokenValidationError` — thrown when token is missing or invalid (caught by retry utilities)
+- `validateTokenFormat(token)` — returns `true` if the token passes basic format checks
+- `getCurrentToken()` — reads `process.env.accessToken`, strips `"Bearer "` prefix, validates, and returns the raw token string
 
 ## Integration with Server
 
-In your `server.ts`, handle token updates via MCP notifications:
+In your `server.ts`, register a notification handler so PETA Core can push a new token at runtime.
+Use a Zod schema for type-safe parsing:
 
 ```typescript
-// Register notification handler for token updates
-this.server.setNotificationHandler(
-  'notifications/token/update',
-  async (notification: any) => {
-    const newToken = notification.params?.token;
-    if (newToken) {
-      process.env.apiToken = newToken;
-      logger.info('Token updated successfully');
+import { z } from 'zod';
+import { validateTokenFormat } from './auth/token.js';
+import { logger } from './utils/logger.js';
+
+// Inside initialize() or the constructor, after creating this.server:
+const tokenUpdateSchema = z
+  .object({
+    method: z.literal('notifications/token/update'),
+    params: z
+      .object({
+        accessToken: z.string().optional(),
+        token: z.string().optional(),
+        timestamp: z.number().optional(),
+      })
+      .catchall(z.unknown()),
+  })
+  .catchall(z.unknown());
+
+type TokenUpdateNotification = z.infer<typeof tokenUpdateSchema>;
+
+this.server.server.setNotificationHandler(
+  tokenUpdateSchema,
+  async (notification: TokenUpdateNotification) => {
+    const newToken =
+      notification?.params?.accessToken ?? notification?.params?.token;
+
+    if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
+      logger.error('[Token] Invalid token in notifications/token/update');
+      return;
     }
+
+    if (!validateTokenFormat(newToken)) {
+      logger.error('[Token] Invalid token format in notifications/token/update');
+      return;
+    }
+
+    process.env.accessToken = newToken.startsWith('Bearer ')
+      ? newToken.slice(7).trim()
+      : newToken.trim();
+    logger.info('[Token] accessToken updated via notification');
   }
 );
 ```
+
+The template `src/server.ts` already includes this handler by default. Keep it for OAuth/API projects, or remove it if your server does not use token auth.
+
+**Notes:**
+- `accessToken` is checked before `token` (preferred field name)
+- Both field names are supported for backwards compatibility
+- The handler uses `this.server.server.setNotificationHandler` (low-level server on the McpServer instance)
 
 ## Examples from Real Projects
 
@@ -103,7 +101,7 @@ Choose a descriptive environment variable name:
 Update `.env.example` accordingly:
 ```bash
 # API Authentication (if needed)
-apiToken=your_api_token_here
+accessToken=your_api_token_here
 ```
 
 ## Summary

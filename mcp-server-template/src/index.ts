@@ -8,11 +8,26 @@
  */
 
 import { config } from 'dotenv';
+import { readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { MCPServer } from './server.js';
 import { logger } from './utils/logger.js';
 
 // Load environment variables from .env file
 config();
+
+function getVersion(): string {
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const raw = readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8');
+    const pkg = JSON.parse(raw) as { version?: string };
+    return pkg.version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
 
 async function main() {
   logger.info('='.repeat(60));
@@ -22,7 +37,7 @@ async function main() {
   try {
     const server = new MCPServer({
       name: process.env.SERVER_NAME || 'mcp-server-template',
-      version: process.env.SERVER_VERSION || '1.0.0',
+      version: getVersion(),
       description: 'A complete TypeScript MCP server template with best practices',
     });
 

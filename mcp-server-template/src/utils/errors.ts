@@ -12,7 +12,7 @@
  * - InvalidParams = -32602
  * - InternalError = -32603
  *
- * For application-specific errors, use the custom range -32000 to -32099 (avoiding official codes).
+ * For application-specific errors, use the custom range -32010 to -32099 (avoiding -32000/-32001 used by MCP SDK).
  */
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
@@ -20,7 +20,10 @@ import { logger } from './logger.js';
 
 /**
  * Application-specific error codes (custom range: -32010 to -32099)
- * These extend MCP standard errors without conflicting with official codes
+ * These extend MCP standard errors without conflicting with official codes.
+ *
+ * When building a server that calls external APIs, map HTTP status codes to
+ * the appropriate code here and throw via createMcpError().
  */
 export enum AppErrorCode {
   // MCP Standard Errors (from official ErrorCode enum)
@@ -31,9 +34,13 @@ export enum AppErrorCode {
   InternalError = ErrorCode.InternalError,     // -32603: Internal error
 
   // Application-specific errors (avoid -32000, -32001 which are used by MCP)
-  ResourceNotFound = -32010,                   // Resource not found
+  NotFound = -32010,                           // Resource not found (HTTP 404)
   OperationFailed = -32011,                    // General operation failure
   ValidationFailed = -32012,                   // Data validation failed
+  AuthenticationFailed = -32030,               // Token missing/expired (HTTP 401)
+  PermissionDenied = -32031,                   // Insufficient scope (HTTP 403)
+  RateLimited = -32034,                        // Rate limit hit (HTTP 429)
+  ApiUnavailable = -32035,                     // Service error (HTTP 5xx)
 }
 
 /**
@@ -73,6 +80,37 @@ export function createInvalidParamsError(message: string, data?: unknown): McpEr
  */
 export function createInternalError(message: string, data?: unknown): McpError {
   return createMcpError(ErrorCode.InternalError, message, data);
+}
+
+/**
+ * Map external API HTTP status codes to template AppErrorCode values.
+ *
+ * Recommended mapping:
+ * - 401 -> AuthenticationFailed
+ * - 403 -> PermissionDenied
+ * - 404 -> NotFound
+ * - 429 -> RateLimited
+ * - 5xx -> ApiUnavailable
+ * - others -> OperationFailed
+ */
+export function mapHttpStatusToAppErrorCode(status: number): AppErrorCode {
+  if (status === 401) return AppErrorCode.AuthenticationFailed;
+  if (status === 403) return AppErrorCode.PermissionDenied;
+  if (status === 404) return AppErrorCode.NotFound;
+  if (status === 429) return AppErrorCode.RateLimited;
+  if (status >= 500 && status <= 599) return AppErrorCode.ApiUnavailable;
+  return AppErrorCode.OperationFailed;
+}
+
+/**
+ * Create an MCP error from an external API HTTP status code.
+ */
+export function createHttpStatusError(
+  status: number,
+  message: string,
+  data?: unknown
+): McpError {
+  return createMcpError(mapHttpStatusToAppErrorCode(status), message, data);
 }
 
 /**
