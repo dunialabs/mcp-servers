@@ -5,20 +5,24 @@ const MAX_TOP = 100;
 
 export const ListUsersInputSchema = {
   top: z.number().int().min(1).max(MAX_TOP).optional().describe('Page size, max 100'),
+  skipToken: z.string().optional().describe('Skip token from previous response'),
 };
 
 export const SearchUsersInputSchema = {
   query: z.string().min(1).describe('Search query for displayName/mail/userPrincipalName'),
   top: z.number().int().min(1).max(MAX_TOP).optional().describe('Page size, max 100'),
+  skipToken: z.string().optional().describe('Skip token from previous response'),
 };
 
 export interface ListUsersParams {
   top?: number;
+  skipToken?: string;
 }
 
 export interface SearchUsersParams {
   query: string;
   top?: number;
+  skipToken?: string;
 }
 
 interface GraphCollectionResponse<T> {
@@ -52,6 +56,7 @@ export async function teamsListUsers(params: ListUsersParams) {
       callGraphApi<GraphCollectionResponse<UserShape>>('/users', {
         query: {
           $top: params.top ?? 50,
+          $skiptoken: params.skipToken,
           $select:
             'id,displayName,givenName,surname,mail,userPrincipalName,jobTitle,mobilePhone,officeLocation',
         },
@@ -91,6 +96,7 @@ export async function teamsSearchUsers(params: SearchUsersParams) {
       callGraphApi<GraphCollectionResponse<UserShape>>('/users', {
         query: {
           $top: params.top ?? 25,
+          $skiptoken: params.skipToken,
           $count: true,
           $filter: filter,
           $select:

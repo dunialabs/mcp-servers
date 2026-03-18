@@ -57,6 +57,7 @@ export const GetMessageThreadInputSchema = {
   channelId: z.string().optional().describe('Channel ID for channel messages'),
   messageId: z.string().min(1).describe('Root message ID'),
   top: z.number().int().min(1).max(50).optional().describe('Page size for replies, max 50'),
+  skipToken: z.string().optional().describe('Skip token from previous response'),
 };
 
 export interface SendChannelMessageParams {
@@ -92,7 +93,7 @@ interface MessageLocator {
 export type SetMessageReactionParams = MessageLocator & { reactionType: string };
 export type UnsetMessageReactionParams = MessageLocator & { reactionType: string };
 export type GetMessageParams = MessageLocator;
-export type GetMessageThreadParams = MessageLocator & { top?: number };
+export type GetMessageThreadParams = MessageLocator & { top?: number; skipToken?: string };
 
 type MessageShape = Record<string, unknown>;
 
@@ -344,6 +345,7 @@ export async function teamsGetMessageThread(params: GetMessageThreadParams) {
         {
           query: {
             $top: params.top ?? 20,
+            $skiptoken: params.skipToken,
           },
         }
       ),

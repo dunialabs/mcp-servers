@@ -5,6 +5,14 @@ import { logger } from './logger.js';
 const BASE_URL = 'https://graph.microsoft.com/v1.0';
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
+function parseRetryAfterSeconds(value: string | null): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export interface GraphRequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   query?: Record<string, string | number | boolean | undefined>;
@@ -63,13 +71,13 @@ export async function callGraphApi<T>(path: string, options: GraphRequestOptions
   const envelope = (typeof data === 'object' && data !== null ? data : {}) as GraphEnvelope;
 
   if (!response.ok) {
-    const retryAfterRaw = response.headers.get('retry-after');
+    const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get('retry-after'));
     throw {
       status: response.status,
       graphCode: envelope.error?.code,
       message: envelope.error?.message || 'Microsoft Graph HTTP request failed',
       details: data,
-      retryAfterSeconds: retryAfterRaw ? Number(retryAfterRaw) : undefined,
+      retryAfterSeconds,
     } satisfies TeamsApiErrorShape & { retryAfterSeconds?: number };
   }
 
@@ -106,7 +114,9 @@ export async function withTeamsRetry<T>(
       const status = typeof parsed.status === 'number' ? parsed.status : undefined;
       const graphCode = typeof parsed.graphCode === 'string' ? parsed.graphCode : undefined;
       const retryAfterSeconds =
-        typeof parsed.retryAfterSeconds === 'number' ? parsed.retryAfterSeconds : undefined;
+        typeof parsed.retryAfterSeconds === 'number' && Number.isFinite(parsed.retryAfterSeconds)
+          ? parsed.retryAfterSeconds
+          : undefined;
       const retryable = status !== undefined && RETRYABLE_STATUS.has(status);
 
       if (!retryable || attempt === maxAttempts) {

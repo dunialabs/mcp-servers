@@ -20,6 +20,7 @@ export const ListChannelMessageRepliesInputSchema = {
   channelId: z.string().min(1).describe('Microsoft Teams channel ID'),
   messageId: z.string().min(1).describe('Parent channel message ID'),
   top: z.number().int().min(1).max(MAX_TOP).optional().describe('Page size, max 50'),
+  skipToken: z.string().optional().describe('Skip token from previous response'),
 };
 
 export const ReplyToChannelMessageInputSchema = {
@@ -48,6 +49,7 @@ export interface ListChannelMessageRepliesParams {
   channelId: string;
   messageId: string;
   top?: number;
+  skipToken?: string;
 }
 
 export interface ReplyToChannelMessageParams {
@@ -145,6 +147,7 @@ export async function teamsListChannelMessageReplies(params: ListChannelMessageR
         {
           query: {
             $top: params.top ?? 20,
+            $skiptoken: params.skipToken,
           },
         }
       ),
