@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-slack",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Slack MCP Server for PETA ecosystem with STDIO transport. Provides messaging, channels, reactions, and users tools.",
   "main": "dist/stdio.js",
   "type": "module",
