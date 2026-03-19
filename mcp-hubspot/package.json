@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-hubspot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "HubSpot MCP Server for PETA ecosystem with STDIO transport. Provides CRM object read/write tools for contacts, companies, deals, and tickets.",
   "main": "dist/stdio.js",
   "type": "module",
