@@ -5,6 +5,10 @@ export class TokenValidationError extends Error {
   }
 }
 
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
 export function getCurrentToken(): string {
   const token = process.env.accessToken;
 
@@ -12,13 +16,18 @@ export function getCurrentToken(): string {
     throw new TokenValidationError('accessToken environment variable not set');
   }
 
-  if (!validateTokenFormat(token)) {
+  const normalizedToken = normalizeAccessToken(token);
+  if (normalizedToken.length === 0) {
+    throw new TokenValidationError('accessToken environment variable not set');
+  }
+
+  if (!validateTokenFormat(normalizedToken)) {
     throw new TokenValidationError('Invalid accessToken format for HubSpot OAuth token');
   }
 
-  return token.trim();
+  return normalizedToken;
 }
 
 export function validateTokenFormat(token: string): boolean {
-  return typeof token === 'string' && token.trim().length >= 20;
+  return typeof token === 'string' && normalizeAccessToken(token).length >= 20;
 }

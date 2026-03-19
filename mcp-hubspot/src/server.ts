@@ -94,7 +94,7 @@ import {
   hubspotListPipelineStages,
   hubspotListTicketPipelines,
 } from './tools/pipelines.js';
-import { validateTokenFormat } from './auth/token.js';
+import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
 
 function getServerVersion(): string {
@@ -128,7 +128,8 @@ export class HubSpotMcpServer {
         method: z.literal('notifications/token/update'),
         params: z
           .object({
-            token: z.string(),
+            token: z.string().optional(),
+            accessToken: z.string().optional(),
             timestamp: z.number().optional(),
           })
           .catchall(z.unknown()),
@@ -140,19 +141,24 @@ export class HubSpotMcpServer {
     this.server.server.setNotificationHandler(
       tokenUpdateSchema,
       async (notification: TokenUpdateNotification) => {
-        const newToken = notification?.params?.token;
+        const newToken =
+          typeof notification?.params?.accessToken === 'string'
+            ? notification.params.accessToken
+            : notification?.params?.token;
 
         if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
           logger.error('[Token] Invalid token in notifications/token/update');
           return;
         }
 
-        if (!validateTokenFormat(newToken)) {
+        const normalizedToken = normalizeAccessToken(newToken);
+
+        if (!validateTokenFormat(normalizedToken)) {
           logger.error('[Token] Invalid token format in notifications/token/update');
           return;
         }
 
-        process.env.accessToken = newToken.trim();
+        process.env.accessToken = normalizedToken;
         logger.info('[Token] accessToken updated via notification');
       }
     );

@@ -18,6 +18,14 @@ interface HubSpotFailureBody {
   [key: string]: unknown;
 }
 
+function parseRetryAfterSeconds(retryAfter: string | null): number | undefined {
+  if (!retryAfter) {
+    return undefined;
+  }
+  const parsed = Number(retryAfter);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -67,13 +75,13 @@ export async function callHubSpotApi<T>(
   if (!response.ok) {
     const parsedBody =
       typeof data === 'object' && data !== null ? (data as HubSpotFailureBody) : undefined;
-    const retryAfter = response.headers.get('retry-after');
+    const retryAfter = parseRetryAfterSeconds(response.headers.get('retry-after'));
     throw {
       status: response.status,
       category: parsedBody?.category,
       message: parsedBody?.message ?? `HubSpot HTTP request failed (${response.status})`,
       details: data,
-      retryAfterSeconds: retryAfter ? Number(retryAfter) : undefined,
+      retryAfterSeconds: retryAfter,
     } satisfies HubSpotApiErrorShape & { retryAfterSeconds?: number };
   }
 
@@ -109,7 +117,10 @@ export async function withHubSpotRetry<T>(
       const statusValue = parsed.status;
       const status = typeof statusValue === 'number' ? statusValue : undefined;
       const retryAfterValue = parsed.retryAfterSeconds;
-      const retryAfterSeconds = typeof retryAfterValue === 'number' ? retryAfterValue : undefined;
+      const retryAfterSeconds =
+        typeof retryAfterValue === 'number' && Number.isFinite(retryAfterValue)
+          ? retryAfterValue
+          : undefined;
       const retryable = status !== undefined && RETRYABLE_STATUS.has(status);
 
       if (!retryable || attempt === maxAttempts) {
