@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-pipedrive",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pipedrive MCP Server for PETA ecosystem with STDIO transport. Provides CRM read/write/search tools across deals, contacts, activities, leads, notes, and products.",
   "main": "dist/stdio.js",
   "type": "module",
