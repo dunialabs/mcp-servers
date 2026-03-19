@@ -1,6 +1,7 @@
 import { google, sheets_v4 } from 'googleapis';
-import { getCurrentToken } from '../auth/token.js';
+import { getCurrentToken, TokenValidationError } from '../auth/token.js';
 import { handleSheetsApiError } from './errors.js';
+import { createMcpError, SheetsErrorCode } from './errors.js';
 import { logger } from './logger.js';
 
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
@@ -20,9 +21,18 @@ export async function withSheetsRetry<T>(fn: () => Promise<T>, context: string, 
       return await fn();
     } catch (error: unknown) {
       lastError = error;
+
+      if (error instanceof TokenValidationError) {
+        throw createMcpError(
+          SheetsErrorCode.AuthenticationFailed,
+          'Authentication failed or token expired. Reconnect Google integration.',
+          { reason: error.message }
+        );
+      }
+
       const parsed =
         typeof error === 'object' && error !== null
-          ? (error as { code?: number; response?: { status?: number } })
+          ? (error as { code?: number; response?: { status?: number; headers?: Record<string, unknown> } })
           : {};
       const status = parsed.response?.status ?? parsed.code;
       const retryable = typeof status === 'number' && RETRYABLE_STATUS.has(status);
@@ -31,7 +41,19 @@ export async function withSheetsRetry<T>(fn: () => Promise<T>, context: string, 
         throw handleSheetsApiError(error, context);
       }
 
-      const delayMs = 400 * 2 ** (attempt - 1);
+      const retryAfterRaw = parsed.response?.headers?.['retry-after'];
+      const retryAfterValue = Array.isArray(retryAfterRaw) ? retryAfterRaw[0] : retryAfterRaw;
+      const retryAfterSeconds =
+        typeof retryAfterValue === 'string'
+          ? Number(retryAfterValue)
+          : typeof retryAfterValue === 'number'
+            ? retryAfterValue
+            : undefined;
+
+      const delayMs =
+        status === 429 && retryAfterSeconds !== undefined && Number.isFinite(retryAfterSeconds)
+          ? Math.max(1000, retryAfterSeconds * 1000)
+          : 400 * 2 ** (attempt - 1);
       logger.warn(`[SheetsAPI] ${context} retry ${attempt}/${maxAttempts} in ${delayMs}ms`, { status });
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }

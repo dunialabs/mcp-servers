@@ -66,7 +66,8 @@ export class GoogleSheetsMcpServer {
         method: z.literal('notifications/token/update'),
         params: z
           .object({
-            token: z.string(),
+            accessToken: z.string().optional(),
+            token: z.string().optional(),
             timestamp: z.number().optional(),
           })
           .catchall(z.unknown()),
@@ -76,7 +77,7 @@ export class GoogleSheetsMcpServer {
     type TokenUpdateNotification = z.infer<typeof tokenUpdateSchema>;
 
     this.server.server.setNotificationHandler(tokenUpdateSchema, async (notification: TokenUpdateNotification) => {
-      const newToken = notification?.params?.token;
+      const newToken = notification?.params?.accessToken ?? notification?.params?.token;
 
       if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
         logger.error('[Token] Invalid token in notifications/token/update');
@@ -88,7 +89,9 @@ export class GoogleSheetsMcpServer {
         return;
       }
 
-      process.env.accessToken = newToken;
+      process.env.accessToken = newToken.startsWith('Bearer ')
+        ? newToken.slice(7).trim()
+        : newToken.trim();
       logger.info('[Token] accessToken updated via notification');
     });
 

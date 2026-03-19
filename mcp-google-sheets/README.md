@@ -38,6 +38,8 @@ Optional:
 This server reads `process.env.accessToken` and supports runtime token updates from Core via:
 
 - `notifications/token/update`
+  - `accessToken` (preferred)
+  - `token` (compatible)
 
 No browser OAuth flow is implemented in this server.
 
