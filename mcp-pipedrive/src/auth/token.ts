@@ -10,8 +10,12 @@ export interface PipedriveAuthContext {
   apiDomain: string;
 }
 
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
 export function validateTokenFormat(token: string): boolean {
-  return typeof token === 'string' && token.trim().length >= 20;
+  return typeof token === 'string' && normalizeAccessToken(token).length >= 20;
 }
 
 export function normalizeApiDomain(apiDomain: string): string {
@@ -44,7 +48,12 @@ export function getAuthContext(): PipedriveAuthContext {
     throw new TokenValidationError('accessToken environment variable not set');
   }
 
-  if (!validateTokenFormat(token)) {
+  const normalizedToken = normalizeAccessToken(token);
+  if (normalizedToken.length === 0) {
+    throw new TokenValidationError('accessToken environment variable not set');
+  }
+
+  if (!validateTokenFormat(normalizedToken)) {
     throw new TokenValidationError('Invalid accessToken format for Pipedrive OAuth token');
   }
 
@@ -53,7 +62,7 @@ export function getAuthContext(): PipedriveAuthContext {
   }
 
   return {
-    accessToken: token.trim(),
+    accessToken: normalizedToken,
     apiDomain: normalizeApiDomain(apiDomain),
   };
 }

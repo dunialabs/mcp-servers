@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
-import { validateTokenFormat, normalizeApiDomain } from './auth/token.js';
+import { validateTokenFormat, normalizeApiDomain, normalizeAccessToken } from './auth/token.js';
 import { logger } from './utils/logger.js';
 import {
   AddDealProductInputSchema,
@@ -190,11 +190,12 @@ export class PipedriveMcpServer {
             : notification?.params?.token;
 
         if (typeof tokenCandidate === 'string' && tokenCandidate.trim().length > 0) {
-          if (!validateTokenFormat(tokenCandidate)) {
+          const normalizedToken = normalizeAccessToken(tokenCandidate);
+          if (!validateTokenFormat(normalizedToken)) {
             logger.error('[Token] Invalid token format in notifications/token/update');
             return;
           }
-          process.env.accessToken = tokenCandidate.trim();
+          process.env.accessToken = normalizedToken;
           logger.info('[Token] accessToken updated via notification');
         }
 

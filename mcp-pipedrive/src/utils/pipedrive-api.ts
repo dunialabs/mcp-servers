@@ -38,6 +38,14 @@ function buildUrl(base: string, path: string, query?: Record<string, string | nu
   return url.toString();
 }
 
+export function parseRetryAfterSeconds(retryAfter: string | null | undefined): number | undefined {
+  if (!retryAfter) {
+    return undefined;
+  }
+  const parsed = Number(retryAfter);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 export async function callPipedriveApi<T>(
   path: string,
   options: PipedriveRequestOptions = {}
@@ -66,7 +74,7 @@ export async function callPipedriveApi<T>(
   }
 
   if (!response.ok) {
-    const retryAfter = response.headers.get('retry-after');
+    const retryAfter = parseRetryAfterSeconds(response.headers.get('retry-after'));
     const parsed = typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>) : undefined;
 
     throw {
@@ -74,7 +82,7 @@ export async function callPipedriveApi<T>(
       message: typeof parsed?.error === 'string' ? parsed.error : `Pipedrive HTTP request failed (${response.status})`,
       errorCode: typeof parsed?.error === 'string' ? parsed.error : undefined,
       details: payload,
-      retryAfterSeconds: retryAfter ? Number(retryAfter) : undefined,
+      retryAfterSeconds: retryAfter,
     } satisfies PipedriveApiErrorShape & { retryAfterSeconds?: number };
   }
 
@@ -124,7 +132,10 @@ export async function withPipedriveRetry<T>(
 
       const parsed = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
       const status = typeof parsed.status === 'number' ? parsed.status : undefined;
-      const retryAfterSeconds = typeof parsed.retryAfterSeconds === 'number' ? parsed.retryAfterSeconds : undefined;
+      const retryAfterSeconds =
+        typeof parsed.retryAfterSeconds === 'number' && Number.isFinite(parsed.retryAfterSeconds)
+          ? parsed.retryAfterSeconds
+          : undefined;
       const retryable = status !== undefined && RETRYABLE_STATUS.has(status);
 
       if (!retryable || attempt === maxAttempts) {
