@@ -5,6 +5,10 @@ export class TokenValidationError extends Error {
   }
 }
 
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
 export function getCurrentToken(): string {
   const token = process.env.accessToken;
 
@@ -12,15 +16,18 @@ export function getCurrentToken(): string {
     throw new TokenValidationError('accessToken environment variable not set');
   }
 
-  if (!validateTokenFormat(token)) {
+  const normalizedToken = normalizeAccessToken(token);
+
+  if (!validateTokenFormat(normalizedToken)) {
     throw new TokenValidationError(
       'Invalid accessToken format: expected Slack user token (xoxp-...)'
     );
   }
 
-  return token;
+  return normalizedToken;
 }
 
 export function validateTokenFormat(token: string): boolean {
-  return typeof token === 'string' && token.startsWith('xoxp-') && token.trim().length > 10;
+  const normalizedToken = normalizeAccessToken(token);
+  return typeof token === 'string' && normalizedToken.startsWith('xoxp-') && normalizedToken.length > 10;
 }

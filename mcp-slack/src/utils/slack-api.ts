@@ -9,6 +9,14 @@ type SlackResponse<T> = {
   error?: string;
 } & T;
 
+function parseRetryAfterSeconds(retryAfter: string | null): number | undefined {
+  if (!retryAfter) {
+    return undefined;
+  }
+  const parsed = Number(retryAfter);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -35,12 +43,12 @@ export async function callSlackApi<T extends Record<string, unknown>>(
   }
 
   if (!response.ok) {
-    const retryAfter = response.headers.get('retry-after');
+    const retryAfter = parseRetryAfterSeconds(response.headers.get('retry-after'));
     throw {
       status: response.status,
       message: 'Slack HTTP request failed',
       details: data,
-      retryAfterSeconds: retryAfter ? Number(retryAfter) : undefined,
+      retryAfterSeconds: retryAfter,
     } satisfies SlackApiErrorShape & { retryAfterSeconds?: number };
   }
 
@@ -95,7 +103,10 @@ export async function withSlackRetry<T>(
       const statusValue = parsed.status;
       const status = typeof statusValue === 'number' ? statusValue : undefined;
       const retryAfterValue = parsed.retryAfterSeconds;
-      const retryAfterSeconds = typeof retryAfterValue === 'number' ? retryAfterValue : undefined;
+      const retryAfterSeconds =
+        typeof retryAfterValue === 'number' && Number.isFinite(retryAfterValue)
+          ? retryAfterValue
+          : undefined;
       const retryable = status !== undefined && RETRYABLE_STATUS.has(status);
 
       if (!retryable || attempt === maxAttempts) {
