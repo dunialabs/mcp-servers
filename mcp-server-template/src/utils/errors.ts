@@ -34,7 +34,7 @@ export enum AppErrorCode {
   InternalError = ErrorCode.InternalError,     // -32603: Internal error
 
   // Application-specific errors (avoid -32000, -32001 which are used by MCP)
-  NotFound = -32010,                           // Resource not found (HTTP 404)
+  NotFound = -32032,                           // Resource not found (HTTP 404)
   OperationFailed = -32011,                    // General operation failure
   ValidationFailed = -32012,                   // Data validation failed
   AuthenticationFailed = -32030,               // Token missing/expired (HTTP 401)

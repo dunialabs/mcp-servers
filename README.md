@@ -473,6 +473,27 @@ An MCP server for Google Forms integration, enabling AI assistants to create for
 
 ---
 
+### 22. MCP BraveSearch Server
+**Directory:** `mcp-bravesearch/`
+
+An MCP server for Brave Search integration, enabling AI assistants to run web, local, news, video, image, and summarizer-key based search workflows via Brave Search API.
+
+**Features:**
+
+- 6 tools for Brave Search operations
+- Web search with rich filters and optional summarizer key generation
+- Local search using Brave location-enriched results
+- News, video, and image vertical search tools
+- Summarizer tool using Brave summary key flow
+- API key authentication via `BRAVE_API_KEY` (no runtime token update)
+- STDIO transport
+- Docker support (amd64/arm64)
+- Complete TypeScript with strict typing and Zod validation
+
+[View Documentation →](./mcp-bravesearch/README.md)
+
+---
+
 ## Repository Structure
 
 ```
@@ -496,6 +517,7 @@ peta-mcp-servers/
 ├── mcp-pipedrive/           # Pipedrive CRM integration
 ├── mcp-teams/               # Microsoft Teams integration
 ├── mcp-google-forms/        # Google Forms integration
+├── mcp-bravesearch/         # Brave Search integration
 ├── mcp-intercom/            # Intercom customer messaging integration
 ├── mcp-mysql/               # MySQL database integration
 └── README.md                # This file
@@ -564,6 +586,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Pipedrive | `ghcr.io/dunialabs/mcp-servers/pipedrive` | v1.0.0 |
 | Teams | `ghcr.io/dunialabs/mcp-servers/teams` | v0.1.0 |
 | Google Forms | `ghcr.io/dunialabs/mcp-servers/google-forms` | v0.1.0 |
+| BraveSearch | `ghcr.io/dunialabs/mcp-servers/bravesearch` | v0.1.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
 
