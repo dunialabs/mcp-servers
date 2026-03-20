@@ -18,7 +18,7 @@ interface BraveApiErrorEnvelope {
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
-  query?: Record<string, string | number | boolean | undefined>;
+  query?: Record<string, string | number | boolean | Array<string | number | boolean> | undefined>;
   body?: unknown;
   headers?: Record<string, string>;
 }
@@ -27,15 +27,27 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function buildUrl(base: string, path: string, query?: Record<string, string | number | boolean | undefined>): string {
+export function buildUrl(
+  base: string,
+  path: string,
+  query?: Record<string, string | number | boolean | Array<string | number | boolean> | undefined>
+): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const url = new URL(normalizedPath, base);
 
   if (query) {
     for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
+      const queryKey = key === 'query' ? 'q' : key;
+      if (value === undefined) {
+        continue;
       }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          url.searchParams.append(queryKey, String(item));
+        }
+        continue;
+      }
+      url.searchParams.set(queryKey, String(value));
     }
   }
 

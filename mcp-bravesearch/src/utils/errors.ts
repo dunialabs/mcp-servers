@@ -36,7 +36,7 @@ export function handleBraveApiError(error: BraveApiErrorShape, context: string):
     );
   }
 
-  if (status === 400) {
+  if (status === 400 || status === 422 || code === 'VALIDATION') {
     return createMcpError(
       BraveErrorCode.InvalidParams,
       error.message || 'Invalid Brave Search request parameters.',

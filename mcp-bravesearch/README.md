@@ -111,6 +111,7 @@ No runtime key refresh notification is used in this server.
 ## Tool Notes
 
 - `braveSearchWeb` supports `summary=true`, and returns `summarizerKey` when available.
-- `braveSummarizeByKey` requires `key` from `braveSearchWeb` response.
+- `braveSummarizeByKey` requires `key` from `braveSearchWeb` response and an eligible Brave AI plan.
 - `braveSearchImage` returns URL/metadata only (no base64 image payloads).
 - API retries are enabled for `429` and `5xx` responses.
+- Some search parameter combinations are validated by Brave API itself. Invalid combinations are returned as `InvalidParams (-32602)`.

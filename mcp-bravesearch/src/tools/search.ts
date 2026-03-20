@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import { callBraveApi, withBraveRetry } from '../utils/brave-api.js';
+import { BraveErrorCode, createMcpError } from '../utils/errors.js';
+
+const QuerySchema = z
+  .string()
+  .min(1)
+  .max(400)
+  .refine((value) => value.trim().split(/\s+/).length <= 50, 'Query cannot exceed 50 words')
+  .describe('Search query text, max 400 chars and 50 words.');
 
 const WebCountSchema = z.number().int().min(1).max(20).optional();
 const NewsVideoCountSchema = z.number().int().min(1).max(50).optional();
@@ -7,7 +15,7 @@ const ImageCountSchema = z.number().int().min(1).max(200).optional();
 const OffsetSchema = z.number().int().min(0).max(9).optional();
 
 const BaseSearchSchema = {
-  query: z.string().min(1).max(400).describe('Search query text, max 400 chars.'),
+  query: QuerySchema,
   country: z.string().length(2).optional().describe('Country code, e.g. US, GB, DE.'),
   searchLang: z.string().min(2).max(10).optional().describe('Search language, e.g. en.'),
   uiLang: z.string().min(2).max(20).optional().describe('UI language, e.g. en-US.'),
@@ -25,11 +33,24 @@ export const BraveSearchWebInputSchema = {
   offset: OffsetSchema.describe('Pagination offset. Range 0-9.'),
   textDecorations: z.boolean().optional().describe('Include highlighting markers.'),
   resultFilter: z
-    .array(z.enum(['discussions', 'faq', 'infobox', 'locations', 'news', 'query', 'summarizer', 'videos', 'web']))
+    .array(
+      z.enum([
+        'discussions',
+        'faq',
+        'infobox',
+        'locations',
+        'news',
+        'query',
+        'rich',
+        'summarizer',
+        'videos',
+        'web',
+      ])
+    )
     .min(1)
     .optional()
     .describe('Filter result sections from Brave response.'),
-  goggles: z.array(z.string().min(1)).optional().describe('Custom Brave Goggles.'),
+  goggles: z.array(z.string().url()).optional().describe('Custom Brave Goggle URLs.'),
   units: z.enum(['metric', 'imperial']).optional(),
   extraSnippets: z.boolean().optional().describe('Pro plans only.'),
   summary: z.boolean().optional().describe('Set true to return summarizer key when available.'),
@@ -47,7 +68,7 @@ export const BraveSearchNewsInputSchema = {
   ...BaseSearchSchema,
   count: NewsVideoCountSchema.describe('Results per page. Range 1-50.'),
   offset: OffsetSchema.describe('Pagination offset. Range 0-9.'),
-  goggles: z.array(z.string().min(1)).optional(),
+  goggles: z.array(z.string().url()).optional(),
   extraSnippets: z.boolean().optional().describe('Pro plans only.'),
 };
 
@@ -58,7 +79,7 @@ export const BraveSearchVideoInputSchema = {
 };
 
 export const BraveSearchImageInputSchema = {
-  query: z.string().min(1).max(400).describe('Search query text, max 400 chars.'),
+  query: QuerySchema,
   country: z.string().length(2).optional().describe('Country code, e.g. US, GB, DE.'),
   searchLang: z.string().min(2).max(10).optional().describe('Search language, e.g. en.'),
   count: ImageCountSchema.describe('Results per page. Range 1-200.'),
@@ -86,7 +107,9 @@ interface WebLikeParams {
 
 interface WebParams extends WebLikeParams {
   textDecorations?: boolean;
-  resultFilter?: Array<'discussions' | 'faq' | 'infobox' | 'locations' | 'news' | 'query' | 'summarizer' | 'videos' | 'web'>;
+  resultFilter?: Array<
+    'discussions' | 'faq' | 'infobox' | 'locations' | 'news' | 'query' | 'rich' | 'summarizer' | 'videos' | 'web'
+  >;
   goggles?: string[];
   units?: 'metric' | 'imperial';
   extraSnippets?: boolean;
@@ -126,6 +149,15 @@ interface BraveQuerySection {
   more_results_available?: boolean;
 }
 
+interface SummarizerResponse {
+  status?: string;
+  title?: unknown;
+  summary?: unknown;
+  type?: unknown;
+  entities?: unknown;
+  references?: unknown;
+}
+
 function formatToolResult(payload: unknown) {
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
@@ -134,7 +166,7 @@ function formatToolResult(payload: unknown) {
 
 function normalizeCommonQuery(params: WebLikeParams) {
   return {
-    q: params.query,
+    query: params.query,
     country: params.country,
     search_lang: params.searchLang,
     ui_lang: params.uiLang,
@@ -226,14 +258,17 @@ function parseQuerySection(payload: unknown): BraveQuerySection {
 }
 
 export async function braveSearchWeb(params: WebParams) {
+  const resultFilter = params.summary
+    ? 'summarizer'
+    : params.resultFilter?.join(',');
   const payload = await withBraveRetry(
     () =>
       callBraveApi<Record<string, unknown>>('/res/v1/web/search', {
         query: {
           ...normalizeCommonQuery(params),
           text_decorations: params.textDecorations,
-          result_filter: params.resultFilter?.join(','),
-          goggles: params.goggles?.join(','),
+          result_filter: resultFilter,
+          goggles: params.goggles,
           units: params.units,
           extra_snippets: params.extraSnippets,
           summary: params.summary,
@@ -319,7 +354,7 @@ export async function braveSearchNews(params: NewsParams) {
       callBraveApi<Record<string, unknown>>('/res/v1/news/search', {
         query: {
           ...normalizeCommonQuery(params),
-          goggles: params.goggles?.join(','),
+          goggles: params.goggles,
           extra_snippets: params.extraSnippets,
         },
       }),
@@ -356,7 +391,7 @@ export async function braveSearchImage(params: ImageParams) {
     () =>
       callBraveApi<Record<string, unknown>>('/res/v1/images/search', {
         query: {
-          q: params.query,
+          query: params.query,
           country: params.country,
           search_lang: params.searchLang,
           count: params.count,
@@ -376,17 +411,35 @@ export async function braveSearchImage(params: ImageParams) {
 }
 
 export async function braveSummarizeByKey(params: SummarizeParams) {
-  const payload = await withBraveRetry(
-    () =>
-      callBraveApi<Record<string, unknown>>('/res/v1/summarizer/search', {
-        query: {
-          key: params.key,
-          entity_info: params.entityInfo ? 1 : undefined,
-          inline_references: params.inlineReferences,
-        },
-      }),
-    'braveSummarizeByKey'
-  );
+  let payload: SummarizerResponse | null = null;
+
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    const response = await withBraveRetry(
+      () =>
+        callBraveApi<SummarizerResponse>('/res/v1/summarizer/search', {
+          query: {
+            key: params.key,
+            entity_info: params.entityInfo,
+            inline_references: params.inlineReferences,
+          },
+        }),
+      'braveSummarizeByKey'
+    );
+
+    if (response.status === 'complete') {
+      payload = response;
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  if (!payload) {
+    throw createMcpError(
+      BraveErrorCode.ApiUnavailable,
+      'Summarizer summary could not be retrieved after multiple attempts.'
+    );
+  }
 
   return formatToolResult({
     key: params.key,
