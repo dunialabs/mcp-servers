@@ -8,6 +8,16 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
 
+export enum CanvaErrorCode {
+  InvalidParams = ErrorCode.InvalidParams,
+  InternalError = ErrorCode.InternalError,
+  AuthenticationFailed = -32030,
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  RateLimited = -32034,
+  ApiUnavailable = -32035,
+}
+
 /**
  * Canva API Error
  */
@@ -20,6 +30,11 @@ export class CanvaError extends Error {
     super(message);
     this.name = 'CanvaError';
   }
+}
+
+export function createMcpError(code: number, message: string, data?: unknown): McpError {
+  logger.error(`[McpError] code=${code} message=${message}`, data);
+  return new McpError(code, message, data);
 }
 
 /**
@@ -86,51 +101,51 @@ export function toMcpError(error: unknown, context: string): McpError {
 
     switch (status) {
       case 401:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Authentication failed. Please check your Canva access token.`
+        return createMcpError(
+          CanvaErrorCode.AuthenticationFailed,
+          'Authentication failed or token expired. Reconnect Canva integration.'
         );
 
       case 403:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Permission denied. Your Canva account or token doesn't have access to this resource. ${error.message}`
+        return createMcpError(
+          CanvaErrorCode.PermissionDenied,
+          'Permission denied. Verify Canva scopes and resource access.'
         );
 
       case 404:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Resource not found. ${error.message}`
+        return createMcpError(
+          CanvaErrorCode.NotFound,
+          'Canva resource not found.'
         );
 
       case 400:
       case 422:
-        return new McpError(
-          ErrorCode.InvalidParams,
+        return createMcpError(
+          CanvaErrorCode.InvalidParams,
           `[${context}] Invalid parameters. ${error.message}`
         );
 
       case 429:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Rate limit exceeded. Please try again later.`
+        return createMcpError(
+          CanvaErrorCode.RateLimited,
+          'Canva API rate limit exceeded. Retry shortly.'
         );
 
       case 408:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Request timeout. ${error.message}`
+        return createMcpError(
+          CanvaErrorCode.ApiUnavailable,
+          'Canva API request timed out. Retry shortly.'
         );
 
       default:
         if (status >= 500) {
-          return new McpError(
-            ErrorCode.InternalError,
-            `[${context}] Canva server error (${status}). ${error.message}`
+          return createMcpError(
+            CanvaErrorCode.ApiUnavailable,
+            'Canva API temporarily unavailable. Retry shortly.'
           );
         }
-        return new McpError(
-          ErrorCode.InternalError,
+        return createMcpError(
+          CanvaErrorCode.InternalError,
           `[${context}] ${error.message}`
         );
     }
@@ -138,14 +153,14 @@ export function toMcpError(error: unknown, context: string): McpError {
 
   if (error instanceof Error) {
     logger.error(`[${context}] Unexpected error`, { error: error.message });
-    return new McpError(
-      ErrorCode.InternalError,
+    return createMcpError(
+      CanvaErrorCode.InternalError,
       `[${context}] ${error.message}`
     );
   }
 
-  return new McpError(
-    ErrorCode.InternalError,
+  return createMcpError(
+    CanvaErrorCode.InternalError,
     `[${context}] Unknown error occurred`
   );
 }

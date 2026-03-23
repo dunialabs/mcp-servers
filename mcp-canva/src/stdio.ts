@@ -6,6 +6,7 @@
 
 import { CanvaMCPServer } from './server.js';
 import { logger } from './utils/logger.js';
+import { getServerVersion } from './utils/version.js';
 
 // Configure logger to use stderr for all output (required for STDIO transport)
 // Ensure all console.* calls go to stderr to avoid polluting stdout
@@ -27,7 +28,7 @@ async function main() {
   try {
     const server = new CanvaMCPServer({
       name: 'mcp-canva',
-      version: '1.0.0',
+      version: getServerVersion(),
       description: 'Canva MCP Server - Create and manage designs, assets, folders, and templates through Canva Connect API'
     });
 

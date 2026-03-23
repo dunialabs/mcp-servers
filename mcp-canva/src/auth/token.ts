@@ -12,23 +12,36 @@ export interface CanvaCredentials {
   accessToken: string;
 }
 
+export class TokenValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenValidationError';
+  }
+}
+
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
 /**
  * Get current Canva credentials
  *
  * @returns Canva OAuth credentials
- * @throws Error if access token is missing
+ * @throws TokenValidationError if access token is missing or invalid
  */
 export function getCurrentCredentials(): CanvaCredentials {
-  const accessToken = process.env.accessToken;
+  const rawToken = process.env.accessToken;
 
-  if (!accessToken) {
-    throw new Error(
+  if (!rawToken || typeof rawToken !== 'string' || rawToken.trim().length === 0) {
+    throw new TokenValidationError(
       'Missing Canva credentials. Please provide:\n\n' +
       'accessToken=your_oauth_token\n\n' +
       'For local development, see local-docs/canva-oauth-integration.md for ' +
       'instructions on how to obtain a test token.'
     );
   }
+
+  const accessToken = normalizeAccessToken(rawToken);
 
   return {
     accessToken,

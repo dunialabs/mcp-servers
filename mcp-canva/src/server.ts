@@ -64,6 +64,7 @@ import {
 
 import { logger } from './utils/logger.js';
 import type { ServerConfig } from './types/index.js';
+import { normalizeAccessToken } from './auth/token.js';
 
 /**
  * Tool schemas using Zod
@@ -331,7 +332,8 @@ export class CanvaMCPServer {
     const TokenUpdateNotificationSchema = z.object({
       method: z.literal('notifications/token/update'),
       params: z.object({
-        token: z.string(),
+        token: z.string().optional(),
+        accessToken: z.string().optional(),
         timestamp: z.number().optional()
       }).catchall(z.unknown())
     }).catchall(z.unknown());
@@ -341,7 +343,9 @@ export class CanvaMCPServer {
       async (notification) => {
         logger.info('[Token] Received token update notification');
 
-        const { token: newToken, timestamp } = notification.params;
+        const rawToken = notification.params.accessToken ?? notification.params.token;
+        const timestamp = notification.params.timestamp;
+        const newToken = rawToken ? normalizeAccessToken(rawToken) : '';
 
         if (!newToken || typeof newToken !== 'string' || newToken.length === 0) {
           logger.error('[Token] Invalid token received in notification');
