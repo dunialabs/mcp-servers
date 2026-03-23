@@ -3,7 +3,7 @@
  * Get version history of a Figma file
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -36,6 +36,6 @@ export async function figmaGetVersions(params: FigmaGetVersionsParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaGetVersions] error:', error.message);
-    throw new Error(`Failed to get versions: ${error.message}`);
+    throwToolError(error, 'Failed to get versions');
   }
 }

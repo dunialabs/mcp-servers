@@ -3,7 +3,7 @@
  * Create a new comment in a Figma file
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -57,6 +57,6 @@ export async function figmaCreateComment(params: FigmaCreateCommentParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaCreateComment] error:', error.message);
-    throw new Error(`Failed to create comment: ${error.message}`);
+    throwToolError(error, 'Failed to create comment');
   }
 }

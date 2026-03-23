@@ -185,7 +185,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaListFiles",
   "arguments": {
-    "projectId": "123456789"
+    "project_id": "123456789"
   }
 }
 ```
@@ -195,7 +195,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetFile",
   "arguments": {
-    "fileKey": "abc123def456",
+    "file_key": "abc123def456",
     "depth": 2
   }
 }
@@ -206,8 +206,8 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetNode",
   "arguments": {
-    "fileKey": "abc123def456",
-    "nodeIds": ["1:2", "3:4"]
+    "file_key": "abc123def456",
+    "ids": ["1:2", "3:4"]
   }
 }
 ```
@@ -217,8 +217,8 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetScreenshot",
   "arguments": {
-    "fileKey": "abc123def456",
-    "nodeIds": ["1:2", "3:4"],
+    "file_key": "abc123def456",
+    "ids": ["1:2", "3:4"],
     "format": "png",
     "scale": 2
   }
@@ -232,7 +232,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetMetadata",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -242,7 +242,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetMetadata",
   "arguments": {
-    "fileKey": "abc123def456",
+    "file_key": "abc123def456",
     "lightweight": true,
     "format": "xml"
   }
@@ -256,7 +256,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetFigJam",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -266,9 +266,9 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetFigJam",
   "arguments": {
-    "fileKey": "abc123def456",
-    "nodeIds": ["1:2", "3:4"],
-    "includeScreenshots": true,
+    "file_key": "abc123def456",
+    "node_ids": ["1:2", "3:4"],
+    "include_screenshots": true,
     "scale": 2
   }
 }
@@ -279,7 +279,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetVersions",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -289,7 +289,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaListComments",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -301,9 +301,9 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaCreateComment",
   "arguments": {
-    "fileKey": "abc123def456",
+    "file_key": "abc123def456",
     "message": "Great design! Can we adjust the spacing here?",
-    "clientMeta": {
+    "client_meta": {
       "x": 100,
       "y": 200
     }
@@ -316,9 +316,9 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaCreateComment",
   "arguments": {
-    "fileKey": "abc123def456",
+    "file_key": "abc123def456",
     "message": "Please review this component",
-    "clientMeta": {
+    "client_meta": {
       "node_id": "1:2",
       "node_offset": {
         "x": 10,
@@ -334,8 +334,8 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaReplyComment",
   "arguments": {
-    "fileKey": "abc123def456",
-    "commentId": "789",
+    "file_key": "abc123def456",
+    "comment_id": "789",
     "message": "Good point, I'll update it."
   }
 }
@@ -346,7 +346,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetDesignContext",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -356,7 +356,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetVariables",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -366,7 +366,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetComponents",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -376,7 +376,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetStyles",
   "arguments": {
-    "fileKey": "abc123def456"
+    "file_key": "abc123def456"
   }
 }
 ```
@@ -386,7 +386,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaListProjects",
   "arguments": {
-    "teamId": "987654321"
+    "team_id": "987654321"
   }
 }
 ```
@@ -396,7 +396,7 @@ Figma REST API has the following known limitations:
 {
   "name": "figmaGetProject",
   "arguments": {
-    "projectId": "123456789"
+    "project_id": "123456789"
   }
 }
 ```

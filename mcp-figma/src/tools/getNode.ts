@@ -3,7 +3,7 @@
  * Get specific nodes from a Figma file
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -43,6 +43,6 @@ export async function figmaGetNode(params: FigmaGetNodeParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaGetNode] error:', error.message);
-    throw new Error(`Failed to get nodes: ${error.message}`);
+    throwToolError(error, 'Failed to get nodes');
   }
 }

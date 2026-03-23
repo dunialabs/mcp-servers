@@ -3,7 +3,7 @@
  * Get FigJam diagram content in XML format with screenshots
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -172,6 +172,6 @@ export async function figmaGetFigJam(params: FigmaGetFigJamParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaGetFigJam] error:', error.message);
-    throw new Error(`Failed to get FigJam: ${error.message}`);
+    throwToolError(error, 'Failed to get FigJam');
   }
 }

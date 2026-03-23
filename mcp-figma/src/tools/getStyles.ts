@@ -3,7 +3,7 @@
  * Get styles (text, color, effect, grid) from a Figma file
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -33,6 +33,6 @@ export async function figmaGetStyles(params: FigmaGetStylesParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaGetStyles] error:', error.message);
-    throw new Error(`Failed to get styles: ${error.message}`);
+    throwToolError(error, 'Failed to get styles');
   }
 }

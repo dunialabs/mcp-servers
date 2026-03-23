@@ -3,7 +3,7 @@
  * Get components and component sets from a Figma file
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -34,6 +34,6 @@ export async function figmaGetComponents(params: FigmaGetComponentsParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaGetComponents] error:', error.message);
-    throw new Error(`Failed to get components: ${error.message}`);
+    throwToolError(error, 'Failed to get components');
   }
 }

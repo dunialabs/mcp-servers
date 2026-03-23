@@ -3,7 +3,7 @@
  * Get simplified metadata for a Figma file
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -100,6 +100,6 @@ export async function figmaGetMetadata(params: FigmaGetMetadataParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaGetMetadata] error:', error.message);
-    throw new Error(`Failed to get metadata: ${error.message}`);
+    throwToolError(error, 'Failed to get metadata');
   }
 }

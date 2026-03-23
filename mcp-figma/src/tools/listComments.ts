@@ -3,7 +3,7 @@
  * List all comments in a Figma file
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -31,6 +31,6 @@ export async function figmaListComments(params: FigmaListCommentsParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaListComments] error:', error.message);
-    throw new Error(`Failed to list comments: ${error.message}`);
+    throwToolError(error, 'Failed to list comments');
   }
 }

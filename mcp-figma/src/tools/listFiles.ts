@@ -3,7 +3,7 @@
  * Lists all files in a Figma project
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -31,6 +31,6 @@ export async function figmaListFiles(params: FigmaListFilesParams) {
     };
   } catch (error: any) {
     logger.error('[FigmaListFiles] error:', error.message);
-    throw new Error(`Failed to list files: ${error.message}`);
+    throwToolError(error, 'Failed to list files');
   }
 }

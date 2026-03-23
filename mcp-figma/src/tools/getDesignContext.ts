@@ -3,7 +3,7 @@
  * Get comprehensive design context including file structure, variables, and components
  */
 
-import { createFigmaFetch, FIGMA_API_BASE } from './common.js';
+import { createFigmaFetch, FIGMA_API_BASE, throwToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import { z } from 'zod';
 
@@ -62,6 +62,6 @@ export async function figmaGetDesignContext(params: FigmaGetDesignContextParams)
     };
   } catch (error: any) {
     logger.error('[FigmaGetDesignContext] error:', error.message);
-    throw new Error(`Failed to get design context: ${error.message}`);
+    throwToolError(error, 'Failed to get design context');
   }
 }
