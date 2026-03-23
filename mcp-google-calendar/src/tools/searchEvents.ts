@@ -3,7 +3,7 @@
  * Searches for events matching a query string
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 
 export interface SearchEventsParams {
@@ -60,6 +60,6 @@ export async function searchEvents(params: SearchEventsParams) {
     };
   } catch (error: any) {
     logger.error('[SearchEvents] Error:', error.message);
-    throw new Error(`Failed to search events: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to search events');
   }
 }

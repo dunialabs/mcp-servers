@@ -3,7 +3,7 @@
  * Creates an event from natural language text
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 
 export interface QuickAddParams {
@@ -51,6 +51,6 @@ export async function quickAdd(params: QuickAddParams) {
     };
   } catch (error: any) {
     logger.error('[QuickAdd] Error:', error.message);
-    throw new Error(`Failed to quick add event: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to quick add event');
   }
 }

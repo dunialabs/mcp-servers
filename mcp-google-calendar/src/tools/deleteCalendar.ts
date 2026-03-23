@@ -3,7 +3,7 @@
  * Deletes a calendar
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 
 export interface DeleteCalendarParams {
@@ -36,6 +36,6 @@ export async function deleteCalendar(params: DeleteCalendarParams) {
     };
   } catch (error: any) {
     logger.error('[DeleteCalendar] Error:', error.message);
-    throw new Error(`Failed to delete calendar: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to delete calendar');
   }
 }

@@ -3,7 +3,7 @@
  * Creates a new calendar
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 
 export interface CreateCalendarParams {
@@ -48,6 +48,6 @@ export async function createCalendar(params: CreateCalendarParams) {
     };
   } catch (error: any) {
     logger.error('[CreateCalendar] Error:', error.message);
-    throw new Error(`Failed to create calendar: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to create calendar');
   }
 }

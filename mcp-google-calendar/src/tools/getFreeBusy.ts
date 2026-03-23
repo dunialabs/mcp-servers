@@ -3,7 +3,7 @@
  * Queries free/busy information for calendars
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 
 export interface GetFreeBusyParams {
@@ -53,6 +53,6 @@ export async function getFreeBusy(params: GetFreeBusyParams) {
     };
   } catch (error: any) {
     logger.error('[GetFreeBusy] Error:', error.message);
-    throw new Error(`Failed to get free/busy info: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to get free/busy info');
   }
 }

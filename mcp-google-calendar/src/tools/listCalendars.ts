@@ -3,7 +3,7 @@
  * Lists all calendars accessible by the authenticated user
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 
 export interface ListCalendarsParams {
@@ -48,6 +48,6 @@ export async function listCalendars(params: ListCalendarsParams) {
     };
   } catch (error: any) {
     logger.error('[ListCalendars] Error:', error.message);
-    throw new Error(`Failed to list calendars: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to list calendars');
   }
 }

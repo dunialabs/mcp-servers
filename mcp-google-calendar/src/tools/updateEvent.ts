@@ -3,7 +3,7 @@
  * Updates an existing calendar event
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import type { calendar_v3 } from 'googleapis';
 
@@ -99,6 +99,6 @@ export async function updateEvent(params: UpdateEventParams) {
     };
   } catch (error: any) {
     logger.error('[UpdateEvent] Error:', error.message);
-    throw new Error(`Failed to update event: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to update event');
   }
 }

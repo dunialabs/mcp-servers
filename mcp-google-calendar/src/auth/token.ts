@@ -12,6 +12,17 @@
  * 4. This module reads the latest token on each call
  */
 
+export class TokenValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenValidationError';
+  }
+}
+
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
 /**
  * Get current access token from environment variable
  *
@@ -20,17 +31,18 @@
  * Each call returns the latest token without requiring server restart.
  *
  * @returns Current access token
- * @throws Error if token is not set or invalid
+ * @throws TokenValidationError if token is not set or invalid
  */
 export function getCurrentToken(): string {
-  const token = process.env.accessToken;
+  const raw = process.env.accessToken;
 
-  if (!token) {
-    throw new Error('accessToken environment variable not set');
+  if (!raw || typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new TokenValidationError('accessToken environment variable not set');
   }
 
+  const token = normalizeAccessToken(raw);
   if (!validateTokenFormat(token)) {
-    throw new Error('Invalid accessToken format');
+    throw new TokenValidationError('Invalid accessToken format');
   }
 
   return token;
@@ -46,5 +58,5 @@ export function validateTokenFormat(token: string): boolean {
 
   // Google OAuth 2.0 access tokens typically start with 'ya29.'
   // But we'll accept any non-empty string for flexibility
-  return token.length > 0;
+  return normalizeAccessToken(token).length > 0;
 }

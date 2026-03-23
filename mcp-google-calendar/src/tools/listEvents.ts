@@ -3,7 +3,7 @@
  * Lists events from a specific calendar within a time range
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 
 export interface ListEventsParams {
@@ -65,6 +65,6 @@ export async function listEvents(params: ListEventsParams) {
     };
   } catch (error: any) {
     logger.error('[ListEvents] Error:', error.message);
-    throw new Error(`Failed to list events: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to list events');
   }
 }

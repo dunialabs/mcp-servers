@@ -3,7 +3,7 @@
  * Creates a new calendar event
  */
 
-import { getCalendarClient } from './common.js';
+import { getCalendarClient, rethrowCalendarToolError } from './common.js';
 import { logger } from '../utils/logger.js';
 import type { calendar_v3 } from 'googleapis';
 
@@ -92,6 +92,6 @@ export async function createEvent(params: CreateEventParams) {
     };
   } catch (error: any) {
     logger.error('[CreateEvent] Error:', error.message);
-    throw new Error(`Failed to create event: ${error.message}`);
+    rethrowCalendarToolError(error, 'Failed to create event');
   }
 }
