@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-github",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GitHub MCP Server - Integrate GitHub repositories, issues, pull requests, and more with Claude through Model Context Protocol",
   "main": "dist/stdio.js",
   "type": "module",
