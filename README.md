@@ -569,7 +569,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 |--------|-------|----------------|
 | BraveSearch | `ghcr.io/dunialabs/mcp-servers/bravesearch` | v0.1.0 |
 | Canva | `ghcr.io/dunialabs/mcp-servers/canva` | v1.0.0 |
-| Figma | `ghcr.io/dunialabs/mcp-servers/figma` | v1.0.1 |
+| Figma | `ghcr.io/dunialabs/mcp-servers/figma` | v1.0.2 |
 | GitHub | `ghcr.io/dunialabs/mcp-servers/github` | v1.0.0 |
 | Gmail | `ghcr.io/dunialabs/mcp-servers/gmail` | v1.0.0 |
 | Google Calendar | `ghcr.io/dunialabs/mcp-servers/google-calendar` | v1.0.1 |
