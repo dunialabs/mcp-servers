@@ -8,7 +8,7 @@
  * API Version: 2022-11-28 (latest stable as of 2025)
  */
 
-import { getCurrentToken } from '../auth/token.js';
+import { getCurrentToken, TokenValidationError } from '../auth/token.js';
 import { handleGitHubError } from './errors.js';
 import { logger } from './logger.js';
 
@@ -24,6 +24,20 @@ const GITHUB_API_URL = process.env.GITHUB_API_URL || 'https://api.github.com';
  * https://docs.github.com/en/rest/overview/api-versions
  */
 const GITHUB_API_VERSION = '2022-11-28';
+
+function getDefaultTimeout(): number {
+  const raw = process.env.GITHUB_API_TIMEOUT;
+  if (!raw) {
+    return 30000;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 30000;
+  }
+
+  return parsed;
+}
 
 /**
  * HTTP request options
@@ -47,7 +61,7 @@ export async function githubRequest<T = any>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { method = 'GET', body, headers = {}, timeout = 30000 } = options;
+  const { method = 'GET', body, headers = {}, timeout = getDefaultTimeout() } = options;
 
   // Ensure endpoint starts with /
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -113,6 +127,21 @@ export async function githubRequest<T = any>(
 
     return responseData;
   } catch (error: any) {
+    if (error instanceof TokenValidationError) {
+      throw handleGitHubError(
+        {
+          status: 401,
+          message: error.message,
+          response: {
+            data: {
+              message: error.message,
+            },
+          },
+        },
+        `${method} ${normalizedEndpoint}`
+      );
+    }
+
     // Handle timeout
     if (error.name === 'AbortError') {
       throw handleGitHubError(
@@ -254,3 +283,5 @@ export function buildQueryString(params: Record<string, any>): string {
 
   return filtered.length > 0 ? `?${filtered.join('&')}` : '';
 }
+
+export { getDefaultTimeout };

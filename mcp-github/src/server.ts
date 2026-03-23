@@ -48,6 +48,8 @@ import {
 } from './tools/reviews.js';
 import { createOrUpdateFile, deleteFile } from './tools/file-operations.js';
 import { searchCode, searchIssues } from './tools/search.js';
+import { normalizeAccessToken } from './auth/token.js';
+import { getServerVersion } from './utils/version.js';
 
 /**
  * GitHub MCP Server Class
@@ -58,7 +60,7 @@ export class GitHubMcpServer {
   constructor() {
     this.server = new McpServer({
       name: 'github',
-      version: '1.0.0',
+      version: getServerVersion(),
     });
   }
 
@@ -73,7 +75,8 @@ export class GitHubMcpServer {
     const TokenUpdateNotificationSchema = z.object({
       method: z.literal('notifications/token/update'),
       params: z.object({
-        token: z.string(),
+        token: z.string().optional(),
+        accessToken: z.string().optional(),
         timestamp: z.number().optional(),
       }).catchall(z.unknown()),
     }).catchall(z.unknown());
@@ -83,7 +86,9 @@ export class GitHubMcpServer {
       async (notification) => {
         logger.info('[Token] Received token update notification');
 
-        const { token: newToken, timestamp } = notification.params;
+        const rawToken = notification.params.accessToken ?? notification.params.token;
+        const timestamp = notification.params.timestamp;
+        const newToken = rawToken ? normalizeAccessToken(rawToken) : '';
 
         // Validate token format
         if (!newToken || typeof newToken !== 'string' || newToken.length === 0) {

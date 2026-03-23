@@ -8,6 +8,16 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
 
+export enum GitHubErrorCode {
+  InvalidParams = ErrorCode.InvalidParams,
+  InternalError = ErrorCode.InternalError,
+  AuthenticationFailed = -32030,
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  RateLimited = -32034,
+  ApiUnavailable = -32035,
+}
+
 /**
  * GitHub API Error Response
  */
@@ -38,6 +48,11 @@ export interface GitHubErrorResponse {
  * @param context - Operation context for error message
  * @returns McpError with appropriate code and message
  */
+export function createMcpError(code: number, message: string, data?: unknown): McpError {
+  logger.error(`[McpError] code=${code} message=${message}`, data);
+  return new McpError(code, message, data);
+}
+
 export function handleGitHubError(error: any, context: string): McpError {
   // Extract error details
   const status = error.status || error.response?.status;
@@ -56,35 +71,32 @@ export function handleGitHubError(error: any, context: string): McpError {
   // Map HTTP status to MCP error code
   switch (status) {
     case 401:
-      return new McpError(
-        ErrorCode.InvalidRequest,
-        `Authentication failed: ${githubMessage || 'Invalid or expired access token'}. ` +
-          `Please check your GitHub token.`,
+      return createMcpError(
+        GitHubErrorCode.AuthenticationFailed,
+        'Authentication failed or token expired. Reconnect GitHub integration.',
         { status, context, documentationUrl }
       );
 
     case 403:
       // Check if it's a rate limit error
       if (githubMessage?.toLowerCase().includes('rate limit')) {
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `GitHub API rate limit exceeded. ${githubMessage}. ` +
-            `Please wait or use a token with higher rate limits.`,
+        return createMcpError(
+          GitHubErrorCode.RateLimited,
+          'GitHub API rate limit exceeded. Retry shortly.',
           { status, context, documentationUrl }
         );
       }
 
-      return new McpError(
-        ErrorCode.InvalidRequest,
-        `Permission denied: ${githubMessage || 'Insufficient permissions for this operation'}. ` +
-          `Check if your token has the required scopes.`,
+      return createMcpError(
+        GitHubErrorCode.PermissionDenied,
+        'Permission denied. Verify GitHub token scopes and repository access.',
         { status, context, documentationUrl }
       );
 
     case 404:
-      return new McpError(
-        ErrorCode.InvalidRequest,
-        `Resource not found: ${githubMessage || 'The requested resource does not exist or you don\'t have access to it'}.`,
+      return createMcpError(
+        GitHubErrorCode.NotFound,
+        'GitHub resource not found.',
         { status, context, documentationUrl }
       );
 
@@ -98,17 +110,17 @@ export function handleGitHubError(error: any, context: string): McpError {
           .join(', ');
       }
 
-      return new McpError(
-        ErrorCode.InvalidParams,
+      return createMcpError(
+        GitHubErrorCode.InvalidParams,
         `Validation failed: ${githubMessage || 'Invalid parameters'}. ${validationDetails}`,
         { status, context, errors, documentationUrl }
       );
     }
 
     case 429:
-      return new McpError(
-        ErrorCode.InvalidRequest,
-        `Rate limit exceeded: ${githubMessage}. Please wait before retrying.`,
+      return createMcpError(
+        GitHubErrorCode.RateLimited,
+        'GitHub API rate limit exceeded. Retry shortly.',
         { status, context, documentationUrl }
       );
 
@@ -116,17 +128,16 @@ export function handleGitHubError(error: any, context: string): McpError {
     case 502:
     case 503:
     case 504:
-      return new McpError(
-        ErrorCode.InternalError,
-        `GitHub server error (${status}): ${githubMessage || 'Service temporarily unavailable'}. ` +
-          `Please try again later.`,
+      return createMcpError(
+        GitHubErrorCode.ApiUnavailable,
+        'GitHub API temporarily unavailable. Retry shortly.',
         { status, context, documentationUrl }
       );
 
     default:
       // Generic error for unknown status codes
-      return new McpError(
-        ErrorCode.InternalError,
+      return createMcpError(
+        GitHubErrorCode.InternalError,
         `GitHub API error: ${githubMessage || message}`,
         { status, context, documentationUrl }
       );

@@ -12,6 +12,17 @@
  * 4. This module reads the latest token on each call
  */
 
+export class TokenValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenValidationError';
+  }
+}
+
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
 /**
  * Get current GitHub access token from environment variable
  *
@@ -20,17 +31,18 @@
  * Each call returns the latest token without requiring server restart.
  *
  * @returns Current GitHub access token
- * @throws Error if token is not set or invalid
+ * @throws TokenValidationError if token is not set or invalid
  */
 export function getCurrentToken(): string {
-  const token = process.env.accessToken;
+  const raw = process.env.accessToken;
 
-  if (!token) {
-    throw new Error('accessToken environment variable not set');
+  if (!raw || typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new TokenValidationError('accessToken environment variable not set');
   }
 
+  const token = normalizeAccessToken(raw);
   if (!validateTokenFormat(token)) {
-    throw new Error('Invalid accessToken format');
+    throw new TokenValidationError('Invalid accessToken format');
   }
 
   return token;
@@ -54,20 +66,22 @@ export function validateTokenFormat(token: string): boolean {
     return false;
   }
 
+  const normalized = normalizeAccessToken(token);
+
   // GitHub tokens are typically 40+ characters
   // Minimum length check (realistic minimum for GitHub tokens)
-  if (token.length < 20 || token.length > 500) {
+  if (normalized.length < 20 || normalized.length > 500) {
     return false;
   }
 
   // Check for printable ASCII characters only (security: prevent control characters)
-  if (!/^[\x20-\x7E]+$/.test(token)) {
+  if (!/^[\x20-\x7E]+$/.test(normalized)) {
     return false;
   }
 
   // GitHub tokens typically contain only alphanumeric characters and underscores
   // This is a lenient check to allow for future token format changes
-  if (!/^[a-zA-Z0-9_]+$/.test(token)) {
+  if (!/^[a-zA-Z0-9_]+$/.test(normalized)) {
     return false;
   }
 
