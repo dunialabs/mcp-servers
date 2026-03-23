@@ -1,6 +1,6 @@
 {
   "name": "mcp-canva",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Canva MCP Server - Create and manage designs, assets, folders, and templates through Canva Connect API",
   "main": "dist/stdio.js",
   "type": "module",
