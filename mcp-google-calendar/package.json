@@ -1,7 +1,7 @@
 {
   "name": "@petaio/mcp-google-calendar",
   "version": "1.0.2",
-  "description": "Google Calendar MCP Server for PETA ecosystem with STDIO and local HTTP app testing support.",
+  "description": "Google Calendar MCP Server for PETA ecosystem with STDIO transport.",
   "main": "dist/stdio.js",
   "type": "module",
   "bin": {
@@ -11,9 +11,7 @@
     "build": "tsc && npm run build:app",
     "build:app": "vite build --config vite.app.config.ts",
     "dev": "tsx watch src/stdio.ts",
-    "dev:http": "tsx watch src/http.ts",
     "start": "node dist/stdio.js",
-    "start:http": "node dist/http.js",
     "clean": "rm -rf dist",
     "test": "vitest",
     "test:watch": "vitest watch",
@@ -47,15 +45,9 @@
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.2.2",
     "@modelcontextprotocol/sdk": "^1.23.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
-    "express": "^5.2.1",
     "googleapis": "^140.0.0",
     "https-proxy-agent": "^7.0.6",
-    "vite": "^6.4.1",
-    "vite-plugin-singlefile": "^2.3.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -66,6 +58,8 @@
     "prettier": "^3.2.5",
     "tsx": "^4.7.1",
     "typescript": "^5.7.2",
+    "vite": "^6.4.1",
+    "vite-plugin-singlefile": "^2.3.2",
     "vitest": "^4.0.5"
   },
   "engines": {
