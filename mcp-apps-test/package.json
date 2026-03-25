@@ -1,0 +1,64 @@
+{
+  "name": "@petaio/mcp-apps-test",
+  "version": "0.1.0",
+  "description": "MCP Apps test server for validating interactive views with mock tools, STDIO transport, and local HTTP transport.",
+  "main": "dist/stdio.js",
+  "type": "module",
+  "bin": {
+    "peta-mcp-apps-test": "./dist/stdio.js"
+  },
+  "scripts": {
+    "build": "tsc && npm run build:app",
+    "build:app": "vite build --config vite.app.config.ts",
+    "dev": "tsx watch src/stdio.ts",
+    "dev:http": "tsx watch src/http.ts",
+    "start": "node dist/stdio.js",
+    "start:http": "node dist/http.js",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "test:watch": "vitest watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"ui/**/*.{ts,html}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"ui/**/*.{ts,html}\"",
+    "type-check": "tsc --noEmit",
+    "prepare": "npm run build",
+    "docker:build": "./build-docker.sh"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mcp-apps",
+    "interactive-ui",
+    "typescript",
+    "docker",
+    "peta"
+  ],
+  "author": "PETA Team",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.2.2",
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.10.1",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "tsx": "^4.7.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.1",
+    "vite-plugin-singlefile": "^2.3.2",
+    "vitest": "^4.0.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
