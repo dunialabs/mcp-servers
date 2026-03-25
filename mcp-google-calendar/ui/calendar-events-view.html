@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google Calendar Events View</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Google Calendar</p>
+          <h1>Events View</h1>
+          <p id="subhead" class="subhead">Waiting for tool input...</p>
+        </div>
+        <div class="actions">
+          <button id="refresh" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <section id="status" class="status-card">Connecting to host...</section>
+      <section id="summary" class="summary-grid"></section>
+      <section id="events" class="events-list"></section>
+    </div>
+
+    <script type="module" src="./calendar-events-view.ts"></script>
+  </body>
+</html>

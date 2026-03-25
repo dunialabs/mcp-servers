@@ -4,6 +4,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { listCalendars } from './tools/listCalendars.js';
 import { listEvents } from './tools/listEvents.js';
@@ -18,6 +19,9 @@ import { deleteCalendar } from './tools/deleteCalendar.js';
 import { logger } from './utils/logger.js';
 import { normalizeAccessToken } from './auth/token.js';
 import { getServerVersion } from './utils/version.js';
+import { readAppHtml } from './utils/app-resource.js';
+
+const CALENDAR_EVENTS_VIEW_URI = 'ui://google-calendar/events-view.html';
 
 /**
  * Tool schemas using Zod
@@ -215,12 +219,18 @@ export class GoogleCalendarMcpServer {
     );
 
     // Tool 2: List Events
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gcalendarListEvents',
       {
         title: 'GCalendar - List Events',
         description: 'List events from a specific calendar within a time range. Supports filtering by time, ordering, and pagination.',
         inputSchema: ListEventsParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: CALENDAR_EVENTS_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
         return await listEvents(params);
@@ -238,6 +248,25 @@ export class GoogleCalendarMcpServer {
       async (params: any) => {
         return await searchEvents(params);
       }
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Calendar Events View',
+      CALENDAR_EVENTS_VIEW_URI,
+      {
+        title: 'Google Calendar Events View',
+        description: 'Interactive agenda-style view for Google Calendar events.',
+      },
+      async () => ({
+        contents: [
+          {
+            uri: CALENDAR_EVENTS_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('calendar-events-view.html'),
+          },
+        ],
+      })
     );
 
     // Tool 4: Create Event
@@ -331,7 +360,7 @@ export class GoogleCalendarMcpServer {
       }
     );
 
-    logger.info('[Server] Registered 10 tools');
+    logger.info('[Server] Registered 10 tools and 1 MCP App resource');
   }
 
   /**
