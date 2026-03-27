@@ -13,7 +13,24 @@ export interface GetFreeBusyParams {
   timeZone?: string;
 }
 
-export async function getFreeBusy(params: GetFreeBusyParams) {
+export interface BusySlot {
+  start?: string | null;
+  end?: string | null;
+}
+
+export interface CalendarBusySummary {
+  calendarId: string;
+  busy: BusySlot[];
+  busyCount: number;
+  errors?: unknown;
+}
+
+export async function fetchFreeBusyData(params: GetFreeBusyParams): Promise<{
+  timeMin: string;
+  timeMax: string;
+  timeZone: string;
+  calendars: CalendarBusySummary[];
+}> {
   const calendar = getCalendarClient();
 
   logger.debug('[GetFreeBusy] Querying free/busy', { calendarIds: params.calendarIds });
@@ -33,26 +50,36 @@ export async function getFreeBusy(params: GetFreeBusyParams) {
     logger.debug('[GetFreeBusy] Got free/busy info', { count: Object.keys(calendars).length });
 
     return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            timeMin: params.timeMin,
-            timeMax: params.timeMax,
-            calendars: Object.entries(calendars).map(([calendarId, info]) => ({
-              calendarId,
-              busy: info.busy?.map(period => ({
-                start: period.start,
-                end: period.end,
-              })),
-              errors: info.errors,
-            })),
-          }, null, 2),
-        },
-      ],
+      timeMin: params.timeMin,
+      timeMax: params.timeMax,
+      timeZone: params.timeZone || 'UTC',
+      calendars: Object.entries(calendars).map(([calendarId, info]) => ({
+        calendarId,
+        busy:
+          info.busy?.map(period => ({
+            start: period.start,
+            end: period.end,
+          })) ?? [],
+        busyCount: info.busy?.length ?? 0,
+        errors: info.errors,
+      })),
     };
   } catch (error: any) {
     logger.error('[GetFreeBusy] Error:', error.message);
     rethrowCalendarToolError(error, 'Failed to get free/busy info');
   }
+}
+
+export async function getFreeBusy(params: GetFreeBusyParams) {
+  const result = await fetchFreeBusyData(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result, null, 2),
+      },
+    ],
+    structuredContent: result,
+  };
 }

@@ -4,6 +4,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { listCalendars } from './tools/listCalendars.js';
 import { listEvents } from './tools/listEvents.js';
@@ -18,6 +19,10 @@ import { deleteCalendar } from './tools/deleteCalendar.js';
 import { logger } from './utils/logger.js';
 import { normalizeAccessToken } from './auth/token.js';
 import { getServerVersion } from './utils/version.js';
+import { readAppHtml } from './utils/app-resource.js';
+
+const CALENDAR_EVENTS_VIEW_URI = 'ui://google-calendar/events-view.html';
+const CALENDAR_FREEBUSY_VIEW_URI = 'ui://google-calendar/freebusy-view.html';
 
 /**
  * Tool schemas using Zod
@@ -215,16 +220,41 @@ export class GoogleCalendarMcpServer {
     );
 
     // Tool 2: List Events
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gcalendarListEvents',
       {
         title: 'GCalendar - List Events',
         description: 'List events from a specific calendar within a time range. Supports filtering by time, ordering, and pagination.',
         inputSchema: ListEventsParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: CALENDAR_EVENTS_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
         return await listEvents(params);
       }
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Calendar Events View',
+      CALENDAR_EVENTS_VIEW_URI,
+      {
+        title: 'Google Calendar Events View',
+        description: 'Interactive agenda-style view for calendar events.',
+      },
+      async () => ({
+        contents: [
+          {
+            uri: CALENDAR_EVENTS_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('calendar-events-view.html'),
+          },
+        ],
+      })
     );
 
     // Tool 3: Search Events
@@ -280,16 +310,41 @@ export class GoogleCalendarMcpServer {
     );
 
     // Tool 7: Get Free/Busy
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gcalendarGetFreeBusy',
       {
         title: 'GCalendar - Get Free/Busy',
         description: 'Query free/busy information for multiple calendars within a time range. Useful for finding available meeting times.',
         inputSchema: GetFreeBusyParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: CALENDAR_FREEBUSY_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
         return await getFreeBusy(params);
       }
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Calendar FreeBusy View',
+      CALENDAR_FREEBUSY_VIEW_URI,
+      {
+        title: 'Google Calendar FreeBusy View',
+        description: 'Interactive lane-based view for calendar busy slots.',
+      },
+      async () => ({
+        contents: [
+          {
+            uri: CALENDAR_FREEBUSY_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('calendar-freebusy-view.html'),
+          },
+        ],
+      })
     );
 
     // Tool 8: Quick Add
@@ -331,7 +386,7 @@ export class GoogleCalendarMcpServer {
       }
     );
 
-    logger.info('[Server] Registered 10 tools');
+    logger.info('[Server] Registered 10 tools and 2 MCP App resources');
   }
 
   /**

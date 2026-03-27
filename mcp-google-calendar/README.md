@@ -18,6 +18,10 @@ Model Context Protocol (MCP) server for Google Calendar integration. Built for P
 
 - Read/write access to calendars and events
 - STDIO transport (stdin/stdout communication)
+- MCP Apps-enhanced views for:
+  - `gcalendarListEvents`
+  - `gcalendarGetFreeBusy`
+- Supporting clients can render interactive views; other clients continue to use the normal text/JSON output
 - Dynamic token updates without server restart
 
 ## Quick Start
@@ -48,6 +52,26 @@ npm run build
 export accessToken='ya29.xxx...'
 node dist/stdio.js
 ```
+
+### MCP Apps Build Notes
+
+- `npm run build` now does two things:
+  - compiles the server TypeScript with `tsc`
+  - builds the MCP Apps HTML resources with `npm run build:app`
+- `build:app` packages these views into `dist/ui/ui/`:
+  - `calendar-events-view.html`
+  - `calendar-freebusy-view.html`
+- These built HTML files are required for:
+  - `gcalendarListEvents`
+  - `gcalendarGetFreeBusy`
+  when a client supports MCP Apps rendering
+- If you are developing the server locally and change files under `ui/`, run:
+
+```bash
+npm run build:app
+```
+
+- If the App resources are missing, the server will return an error telling you to run `npm run build:app` or `npm run build` first.
 
 ### For PETA Core Integration
 
@@ -172,8 +196,11 @@ The server reads the Google OAuth access token from the `accessToken` environmen
 # Install dependencies
 npm install
 
-# Build TypeScript
+# Build server + MCP Apps resources
 npm run build
+
+# Rebuild only the MCP Apps HTML resources after editing ui/*
+npm run build:app
 
 # Development mode with auto-reload
 npm run dev

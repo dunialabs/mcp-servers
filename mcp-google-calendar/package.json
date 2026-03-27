@@ -1,21 +1,22 @@
 {
   "name": "@petaio/mcp-google-calendar",
   "version": "1.0.2",
-  "description": "Google Calendar MCP Server for PETA ecosystem with STDIO transport. Provides 10 powerful tools for calendar and event management.",
+  "description": "Google Calendar MCP Server for PETA ecosystem with STDIO transport and MCP Apps-enhanced calendar views.",
   "main": "dist/stdio.js",
   "type": "module",
   "bin": {
     "peta-mcp-google-calendar": "./dist/stdio.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:app",
+    "build:app": "node ./scripts/build-apps.mjs",
     "dev": "tsx watch src/stdio.ts",
     "start": "node dist/stdio.js",
     "clean": "rm -rf dist",
     "test": "vitest",
     "test:watch": "vitest watch",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
+    "lint": "eslint src ui scripts --ext .ts,.mjs",
+    "lint:fix": "eslint src ui scripts --ext .ts,.mjs --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
@@ -42,6 +43,7 @@
   "author": "PETA Team",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.2.2",
     "@modelcontextprotocol/sdk": "^1.23.0",
     "dotenv": "^16.4.5",
     "googleapis": "^140.0.0",
@@ -56,9 +58,11 @@
     "prettier": "^3.2.5",
     "tsx": "^4.7.1",
     "typescript": "^5.7.2",
+    "vite": "^6.4.1",
+    "vite-plugin-singlefile": "^2.3.2",
     "vitest": "^4.0.5"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
