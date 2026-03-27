@@ -28,6 +28,20 @@ type StructuredPayload = {
   events?: EventRecord[];
 };
 
+type EventGroup = {
+  type: 'single' | 'series';
+  key: string;
+  summary: string;
+  description?: string | null;
+  location?: string | null;
+  status?: string | null;
+  htmlLink?: string | null;
+  representativeId?: string | null;
+  start?: string | null;
+  end?: string | null;
+  occurrences: EventRecord[];
+};
+
 const appRoot = document.querySelector<HTMLDivElement>('#app');
 const subhead = document.querySelector<HTMLParagraphElement>('#subhead');
 const statusEl = document.querySelector<HTMLElement>('#status');
@@ -102,6 +116,109 @@ function formatDateRange(start?: string | null, end?: string | null): string {
   return `${formatShortDateTime(start)} - ${formatShortDateTime(end)}`;
 }
 
+function getRecurringSeriesKey(event: EventRecord): string | null {
+  const id = event.id ?? '';
+  const match = id.match(/^(.*)_(\d{8}(T\d{6}Z)?)$/);
+  if (!match) return null;
+
+  return [
+    match[1],
+    event.summary ?? '',
+    event.location ?? '',
+    event.description ?? '',
+    event.status ?? '',
+  ].join('::');
+}
+
+function buildEventGroups(events: EventRecord[]): EventGroup[] {
+  const seriesMap = new Map<string, EventRecord[]>();
+  const singles: EventRecord[] = [];
+
+  for (const event of events) {
+    const seriesKey = getRecurringSeriesKey(event);
+    if (!seriesKey) {
+      singles.push(event);
+      continue;
+    }
+
+    const current = seriesMap.get(seriesKey) ?? [];
+    current.push(event);
+    seriesMap.set(seriesKey, current);
+  }
+
+  const groups: EventGroup[] = [];
+
+  for (const event of singles) {
+    groups.push({
+      type: 'single',
+      key: event.id ?? `${event.summary ?? 'event'}-${event.start ?? ''}`,
+      summary: event.summary ?? 'Untitled event',
+      description: event.description,
+      location: event.location,
+      status: event.status,
+      htmlLink: event.htmlLink,
+      representativeId: event.id,
+      start: event.start,
+      end: event.end,
+      occurrences: [event],
+    });
+  }
+
+  for (const [key, occurrences] of seriesMap.entries()) {
+    const sorted = [...occurrences].sort((a, b) => {
+      const aTime = a.start ? new Date(a.start).getTime() : 0;
+      const bTime = b.start ? new Date(b.start).getTime() : 0;
+      return aTime - bTime;
+    });
+
+    if (sorted.length === 1) {
+      const event = sorted[0];
+      groups.push({
+        type: 'single',
+        key,
+        summary: event.summary ?? 'Untitled event',
+        description: event.description,
+        location: event.location,
+        status: event.status,
+        htmlLink: event.htmlLink,
+        representativeId: event.id,
+        start: event.start,
+        end: event.end,
+        occurrences: [event],
+      });
+      continue;
+    }
+
+    const first = sorted[0];
+    groups.push({
+      type: 'series',
+      key,
+      summary: first.summary ?? 'Untitled event',
+      description: first.description,
+      location: first.location,
+      status: first.status,
+      htmlLink: first.htmlLink,
+      representativeId: first.id,
+      start: first.start,
+      end: first.end,
+      occurrences: sorted,
+    });
+  }
+
+  return groups.sort((a, b) => {
+    const aTime = a.start ? new Date(a.start).getTime() : 0;
+    const bTime = b.start ? new Date(b.start).getTime() : 0;
+    return aTime - bTime;
+  });
+}
+
+function formatOccurrenceDate(value?: string | null): string {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
+}
+
 function setStatus(message: string, variant: 'info' | 'error' | 'success' = 'info') {
   statusEl.textContent = message;
   statusEl.dataset.variant = variant;
@@ -134,8 +251,9 @@ function renderSummary(payload: StructuredPayload | null) {
 
 function renderEvents(payload: StructuredPayload | null) {
   const events = payload?.events ?? [];
+  const groups = buildEventGroups(events);
 
-  if (events.length === 0) {
+  if (groups.length === 0) {
     eventsEl.innerHTML = `
       <article class="empty-state">
         <h2>No events found</h2>
@@ -145,9 +263,35 @@ function renderEvents(payload: StructuredPayload | null) {
     return;
   }
 
-  eventsEl.innerHTML = events
-    .map(
-      (event) => `
+  eventsEl.innerHTML = groups
+    .map((group) => {
+      if (group.type === 'series') {
+        const previewDates = group.occurrences.slice(0, 4).map((event) => formatOccurrenceDate(event.start));
+        const remaining = group.occurrences.length - previewDates.length;
+        return `
+        <article class="event-card">
+          <div class="event-main">
+            <p class="event-time">${escapeHtml(formatDateRange(group.start, group.end))}</p>
+            <h2>${escapeHtml(group.summary)}</h2>
+            <p class="event-meta">Status: ${escapeHtml(group.status ?? 'unknown')}</p>
+            <p class="event-meta">Recurring event with ${group.occurrences.length} occurrences shown as one card</p>
+            ${group.location ? `<p class="event-meta">Location: ${escapeHtml(group.location)}</p>` : ''}
+            ${group.description ? `<p class="event-description">${escapeHtml(group.description)}</p>` : ''}
+            <div class="occurrence-list">
+              ${previewDates.map((date) => `<span class="occurrence-chip">${escapeHtml(date)}</span>`).join('')}
+              ${remaining > 0 ? `<span class="occurrence-chip">+${remaining} more</span>` : ''}
+            </div>
+          </div>
+          <div class="event-side">
+            ${group.htmlLink ? `<a href="${escapeHtml(group.htmlLink)}" target="_blank" rel="noreferrer">Open in Google Calendar</a>` : ''}
+            <p class="event-id">Series ID: ${escapeHtml(group.representativeId ?? 'N/A')}</p>
+          </div>
+        </article>
+      `;
+      }
+
+      const event = group.occurrences[0];
+      return `
         <article class="event-card">
           <div class="event-main">
             <p class="event-time">${escapeHtml(formatDateRange(event.start, event.end))}</p>
@@ -162,7 +306,7 @@ function renderEvents(payload: StructuredPayload | null) {
           </div>
         </article>
       `
-    )
+    })
     .join('');
 }
 
@@ -287,6 +431,17 @@ styles.textContent = `
   .event-main h2 { font-size: 28px; margin-bottom: 10px; }
   .event-meta { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 75%, transparent); margin-bottom: 6px; }
   .event-description { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 70%, transparent); line-height: 1.55; margin-top: 10px; }
+  .occurrence-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .occurrence-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    background: color-mix(in srgb, var(--accent) 10%, white);
+    color: color-mix(in srgb, var(--color-text-primary, #0f172a) 80%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, white);
+  }
   .event-side { min-width: 220px; display: grid; align-content: start; gap: 12px; }
   .event-side a { color: var(--accent); text-decoration: none; font-weight: 600; }
   .event-id { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 60%, transparent); word-break: break-all; font-size: 13px; }

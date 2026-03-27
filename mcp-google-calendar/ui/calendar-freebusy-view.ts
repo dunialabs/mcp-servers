@@ -59,6 +59,13 @@ function formatDate(value?: string | null): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function getCalendarDisplayName(calendarId: string, index: number): string {
+  if (calendarId === 'primary') return 'Primary Calendar';
+  if (calendarId.includes('@group.calendar.google.com')) return `Shared Calendar ${index + 1}`;
+  if (calendarId.includes('@')) return calendarId.split('@')[0] || `Calendar ${index + 1}`;
+  return calendarId;
+}
+
 function formatBusyRange(start?: string | null, end?: string | null): { primary: string; secondary?: string } {
   if (!start || !end) {
     return { primary: `${formatDate(start)} - ${formatDate(end)}` };
@@ -77,6 +84,14 @@ function formatBusyRange(start?: string | null, end?: string | null): { primary:
     startDate.getDate() === endDate.getDate();
 
   const durationMinutes = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
+  const hours = Math.floor(durationMinutes / 60);
+  const minutes = durationMinutes % 60;
+  const durationLabel =
+    hours > 0
+      ? minutes > 0
+        ? `${hours} hr ${minutes} min`
+        : `${hours} hr`
+      : `${minutes} min`;
 
   if (sameDay) {
     return {
@@ -87,7 +102,7 @@ function formatBusyRange(start?: string | null, end?: string | null): { primary:
         hour: '2-digit',
         minute: '2-digit',
       })}`,
-      secondary: `${durationMinutes} min`,
+      secondary: durationLabel,
     };
   }
 
@@ -99,7 +114,7 @@ function formatBusyRange(start?: string | null, end?: string | null): { primary:
       hour: '2-digit',
       minute: '2-digit',
     })}`,
-    secondary: `${durationMinutes} min`,
+    secondary: durationLabel,
   };
 }
 
@@ -153,18 +168,19 @@ function renderLanes(payload: StructuredPayload | null) {
 
   lanesEl.innerHTML = calendars
     .map(
-      (calendar) => `
+      (calendar, index) => `
         <article class="lane-card">
           <div class="lane-header">
             <div>
               <p class="lane-label">Calendar</p>
-              <h2>${escapeHtml(calendar.calendarId)}</h2>
+              <h2>${escapeHtml(getCalendarDisplayName(calendar.calendarId, index))}</h2>
+              <p class="lane-id">${escapeHtml(calendar.calendarId)}</p>
             </div>
-            <p class="lane-count">${calendar.busyCount} busy block(s)</p>
+            <p class="lane-count">${calendar.busyCount} scheduled block(s)</p>
           </div>
           ${
             calendar.busy.length === 0
-              ? '<p class="lane-empty">No busy blocks in this time range.</p>'
+              ? '<p class="lane-empty">No scheduled events in the selected time range.</p>'
               : `<div class="busy-list">
                   ${calendar.busy
                     .map((slot) => {
@@ -297,6 +313,12 @@ styles.textContent = `
   .lane-header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
   .lane-label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px; color: color-mix(in srgb, var(--color-text-primary, #0f172a) 55%, transparent); margin-bottom: 8px; }
   .lane-header h2 { font-size: 24px; }
+  .lane-id {
+    margin-top: 6px;
+    color: color-mix(in srgb, var(--color-text-primary, #0f172a) 58%, transparent);
+    font-size: 13px;
+    word-break: break-all;
+  }
   .lane-count { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 70%, transparent); }
   .busy-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
   .busy-block {
