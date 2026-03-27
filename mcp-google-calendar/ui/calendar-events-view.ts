@@ -62,6 +62,46 @@ function formatDate(value?: string | null): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function formatShortDateTime(value?: string | null): string {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`;
+}
+
+function formatDateRange(start?: string | null, end?: string | null): string {
+  if (!start && !end) return 'Open range';
+  if (!start || !end) return `${formatShortDateTime(start)} -> ${formatShortDateTime(end)}`;
+
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return `${start} -> ${end}`;
+  }
+
+  const sameDay =
+    startDate.getFullYear() === endDate.getFullYear() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getDate() === endDate.getDate();
+
+  if (sameDay) {
+    return `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })} - ${endDate.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  }
+
+  return `${formatShortDateTime(start)} - ${formatShortDateTime(end)}`;
+}
+
 function setStatus(message: string, variant: 'info' | 'error' | 'success' = 'info') {
   statusEl.textContent = message;
   statusEl.dataset.variant = variant;
@@ -77,7 +117,7 @@ function renderSummary(payload: StructuredPayload | null) {
     ['Calendar', payload.calendarId ?? currentInput.calendarId ?? 'primary'],
     ['Events', String(payload.totalResults ?? 0)],
     ['Order', payload.orderBy ?? currentInput.orderBy ?? 'startTime'],
-    ['Range', payload.timeMin || payload.timeMax ? `${payload.timeMin ?? '...'} -> ${payload.timeMax ?? '...'}` : 'Open range'],
+    ['Range', formatDateRange(payload.timeMin ?? null, payload.timeMax ?? null)],
   ];
 
   summaryEl.innerHTML = cards
@@ -110,7 +150,7 @@ function renderEvents(payload: StructuredPayload | null) {
       (event) => `
         <article class="event-card">
           <div class="event-main">
-            <p class="event-time">${escapeHtml(formatDate(event.start))} - ${escapeHtml(formatDate(event.end))}</p>
+            <p class="event-time">${escapeHtml(formatDateRange(event.start, event.end))}</p>
             <h2>${escapeHtml(event.summary ?? 'Untitled event')}</h2>
             <p class="event-meta">Status: ${escapeHtml(event.status ?? 'unknown')}</p>
             ${event.location ? `<p class="event-meta">Location: ${escapeHtml(event.location)}</p>` : ''}

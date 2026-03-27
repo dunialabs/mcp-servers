@@ -59,6 +59,50 @@ function formatDate(value?: string | null): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function formatBusyRange(start?: string | null, end?: string | null): { primary: string; secondary?: string } {
+  if (!start || !end) {
+    return { primary: `${formatDate(start)} - ${formatDate(end)}` };
+  }
+
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return { primary: `${start} - ${end}` };
+  }
+
+  const sameDay =
+    startDate.getFullYear() === endDate.getFullYear() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getDate() === endDate.getDate();
+
+  const durationMinutes = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
+
+  if (sameDay) {
+    return {
+      primary: `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })} - ${endDate.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`,
+      secondary: `${durationMinutes} min`,
+    };
+  }
+
+  return {
+    primary: `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })} - ${endDate.toLocaleDateString()} ${endDate.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`,
+    secondary: `${durationMinutes} min`,
+  };
+}
+
 function setStatus(message: string, variant: 'info' | 'error' | 'success' = 'info') {
   statusEl.textContent = message;
   statusEl.dataset.variant = variant;
@@ -123,15 +167,16 @@ function renderLanes(payload: StructuredPayload | null) {
               ? '<p class="lane-empty">No busy blocks in this time range.</p>'
               : `<div class="busy-list">
                   ${calendar.busy
-                    .map(
-                      (slot) => `
+                    .map((slot) => {
+                      const range = formatBusyRange(slot.start, slot.end);
+                      return `
                         <div class="busy-block">
                           <p class="busy-label">Busy</p>
-                          <p class="busy-time">${escapeHtml(formatDate(slot.start))}</p>
-                          <p class="busy-time">${escapeHtml(formatDate(slot.end))}</p>
+                          <p class="busy-time">${escapeHtml(range.primary)}</p>
+                          ${range.secondary ? `<p class="busy-meta">${escapeHtml(range.secondary)}</p>` : ''}
                         </div>
                       `
-                    )
+                    })
                     .join('')}
                 </div>`
           }
@@ -267,7 +312,16 @@ styles.textContent = `
     color: var(--busy-strong);
     margin-bottom: 10px;
   }
-  .busy-time { font-weight: 600; line-height: 1.45; }
+  .busy-time {
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--busy-strong);
+  }
+  .busy-meta {
+    margin-top: 6px;
+    color: color-mix(in srgb, var(--color-text-primary, #0f172a) 65%, transparent);
+    font-size: 13px;
+  }
   .lane-empty { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 65%, transparent); }
   .empty-state { padding: 24px; }
   button {
