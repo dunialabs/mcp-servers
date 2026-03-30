@@ -45,6 +45,7 @@ import {
 
 import { logger } from './utils/logger.js';
 import type { ServerConfig } from './types/index.js';
+import { normalizeAccessToken } from './auth/token.js';
 
 /**
  * Tool schemas using Zod
@@ -136,10 +137,11 @@ const ReplyToConversationParamsSchema = z.object({
     name: z.string().describe('File name including extension (e.g. "screenshot.png")'),
   })).optional().describe('Array of inline file attachments (base64-encoded); use instead of attachment_urls when the file is not publicly hosted'),
 }).refine(
-  (data) => data.type !== 'admin' || !!data.admin_id,
+  (data: { type: 'admin' | 'user'; admin_id?: string }) => data.type !== 'admin' || !!data.admin_id,
   { message: 'admin_id is required when type is "admin"', path: ['admin_id'] }
 ).refine(
-  (data) => data.type !== 'user' || !!(data.intercom_user_id || data.user_id || data.email),
+  (data: { type: 'admin' | 'user'; intercom_user_id?: string; user_id?: string; email?: string }) =>
+    data.type !== 'user' || !!(data.intercom_user_id || data.user_id || data.email),
   { message: 'One of intercom_user_id, user_id, or email is required when type is "user"', path: ['intercom_user_id'] }
 );
 
@@ -229,17 +231,20 @@ export class IntercomMCPServer {
     const TokenUpdateNotificationSchema = z.object({
       method: z.literal('notifications/token/update'),
       params: z.object({
-        token: z.string(),
+        token: z.string().optional(),
+        accessToken: z.string().optional(),
         timestamp: z.number().optional()
       }).catchall(z.unknown())
     }).catchall(z.unknown());
 
     this.server.server.setNotificationHandler(
       TokenUpdateNotificationSchema,
-      async (notification) => {
+      async (notification: z.infer<typeof TokenUpdateNotificationSchema>) => {
         logger.info('[Token] Received token update notification');
 
-        const { token: newToken, timestamp } = notification.params;
+        const rawToken = notification.params.accessToken ?? notification.params.token;
+        const timestamp = notification.params.timestamp;
+        const newToken = rawToken ? normalizeAccessToken(rawToken) : '';
 
         if (!newToken || typeof newToken !== 'string' || newToken.length === 0) {
           logger.error('[Token] Invalid token received in notification');
@@ -596,7 +601,7 @@ To unassign, pass assignee_id as 0 (number).`,
     logger.info('[Server] Connecting to STDIO transport...');
 
     // Global error handler
-    this.server.server.onerror = (error) => {
+    this.server.server.onerror = (error: unknown) => {
       logger.error('[Server] Server error:', error);
     };
 

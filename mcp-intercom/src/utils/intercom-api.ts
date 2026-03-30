@@ -5,8 +5,9 @@
  * Handles authentication, rate limiting, and error handling
  */
 
-import { getAuthHeader, getBaseURL } from '../auth/token.js';
+import { TokenValidationError, getAuthHeader, getBaseURL } from '../auth/token.js';
 import { IntercomError, handleIntercomError } from './errors.js';
+import { toMcpError } from './errors.js';
 import { logger } from './logger.js';
 
 /**
@@ -95,6 +96,10 @@ export class IntercomAPI {
 
     } catch (error) {
       clearTimeout(timeoutId);
+
+      if (error instanceof TokenValidationError) {
+        throw toMcpError(error, 'Intercom authentication');
+      }
 
       if (error instanceof IntercomError) {
         throw error;

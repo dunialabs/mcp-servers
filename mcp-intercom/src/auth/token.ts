@@ -12,6 +12,13 @@ export interface IntercomCredentials {
   accessToken: string;
 }
 
+export class TokenValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenValidationError';
+  }
+}
+
 /**
  * Region endpoints for Intercom API
  */
@@ -21,6 +28,28 @@ const REGION_ENDPOINTS: Record<string, string> = {
   au: 'https://api.au.intercom.io',
 };
 
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
+export function validateTokenFormat(token: string): boolean {
+  if (!token || typeof token !== 'string') {
+    return false;
+  }
+
+  const normalized = normalizeAccessToken(token);
+
+  if (normalized.length < 20 || normalized.length > 500) {
+    return false;
+  }
+
+  if (!/^[\x20-\x7E]+$/.test(normalized)) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Get current Intercom credentials
  *
@@ -28,14 +57,15 @@ const REGION_ENDPOINTS: Record<string, string> = {
  * @throws Error if access token is missing
  */
 export function getCurrentCredentials(): IntercomCredentials {
-  const accessToken = process.env.accessToken;
+  const raw = process.env.accessToken;
 
-  if (!accessToken) {
-    throw new Error(
-      'Missing Intercom credentials. Please provide:\n\n' +
-      'accessToken=your_oauth_token\n\n' +
-      'For local development, obtain a token through Intercom OAuth flow.'
-    );
+  if (!raw || typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new TokenValidationError('accessToken environment variable not set');
+  }
+
+  const accessToken = normalizeAccessToken(raw);
+  if (!validateTokenFormat(accessToken)) {
+    throw new TokenValidationError('Invalid accessToken format');
   }
 
   return {
@@ -62,4 +92,3 @@ export function getBaseURL(): string {
   const region = (process.env.intercomRegion || 'us').toLowerCase();
   return REGION_ENDPOINTS[region] || REGION_ENDPOINTS.us;
 }
-

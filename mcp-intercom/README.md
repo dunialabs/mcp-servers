@@ -112,7 +112,9 @@ The Console platform automatically manages OAuth tokens:
 2. Console handles OAuth flow and token refresh
 3. Token is provided via `accessToken` environment variable
 4. Region is provided via `intercomRegion` environment variable
-5. Server receives token updates via MCP notifications
+5. Server can receive token updates via MCP notifications
+   - accepts `accessToken` or `token`
+   - runtime token values are normalized before use
 
 ### For Local Development
 
@@ -157,6 +159,16 @@ LOG_LEVEL=info                 # debug, info, warn, error
 NODE_ENV=production            # development, production
 INTERCOM_API_TIMEOUT=30000     # API timeout in milliseconds
 ```
+
+### Runtime Token Updates
+
+When integrated with Console/Core, this server supports runtime token refresh via:
+
+- `notifications/token/update`
+  - `accessToken` or `token`
+  - optional `timestamp`
+
+Incoming token values are trimmed and an optional `Bearer ` prefix is removed before use.
 
 ### Region Configuration
 
@@ -391,7 +403,7 @@ mcp-intercom/
 Error: Missing Intercom credentials
 ```
 
-**Solution**: Ensure `accessToken` environment variable is set correctly.
+**Solution**: Ensure `accessToken` environment variable is set correctly. The server trims whitespace and accepts an optional `Bearer ` prefix.
 
 ### Region Mismatch
 

@@ -6,8 +6,24 @@
  */
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { TokenValidationError } from '../auth/token.js';
 import { logger } from './logger.js';
 import type { IntercomErrorResponse } from '../types/index.js';
+
+export enum IntercomMcpErrorCode {
+  InvalidParams = ErrorCode.InvalidParams,
+  InternalError = ErrorCode.InternalError,
+  AuthenticationFailed = -32030,
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  RateLimited = -32034,
+  ApiUnavailable = -32035,
+}
+
+export function createMcpError(code: number, message: string, data?: unknown): McpError {
+  logger.error(`[McpError] code=${code} message=${message}`, data);
+  return new McpError(code, message, data);
+}
 
 /**
  * Intercom API Error
@@ -75,71 +91,87 @@ export async function handleIntercomError(response: Response): Promise<IntercomE
  * @returns McpError with appropriate code and message
  */
 export function toMcpError(error: unknown, context: string): McpError {
+  if (error instanceof TokenValidationError) {
+    return createMcpError(
+      IntercomMcpErrorCode.AuthenticationFailed,
+      'Authentication failed or token expired. Reconnect Intercom integration.',
+      { context, reason: error.message }
+    );
+  }
+
   if (error instanceof IntercomError) {
     const status = error.status;
 
     switch (status) {
       case 401:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Authentication failed. Please check your Intercom access token.`
+        return createMcpError(
+          IntercomMcpErrorCode.AuthenticationFailed,
+          'Authentication failed or token expired. Reconnect Intercom integration.',
+          { status, context, requestId: error.requestId, code: error.code }
         );
 
       case 403:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Permission denied. Your Intercom account or token doesn't have access to this resource. ${error.message}`
+        return createMcpError(
+          IntercomMcpErrorCode.PermissionDenied,
+          'Permission denied. Verify Intercom token scopes and workspace permissions.',
+          { status, context, requestId: error.requestId, code: error.code }
         );
 
       case 404:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Resource not found. ${error.message}`
+        return createMcpError(
+          IntercomMcpErrorCode.NotFound,
+          'Intercom resource not found.',
+          { status, context, requestId: error.requestId, code: error.code }
         );
 
       case 400:
       case 422:
-        return new McpError(
-          ErrorCode.InvalidParams,
-          `[${context}] Invalid parameters. ${error.message}`
+        return createMcpError(
+          IntercomMcpErrorCode.InvalidParams,
+          `Invalid parameters. ${error.message}`,
+          { status, context, requestId: error.requestId, code: error.code }
         );
 
       case 429:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Rate limit exceeded. Please try again later.`
+        return createMcpError(
+          IntercomMcpErrorCode.RateLimited,
+          'Intercom API rate limit exceeded. Retry shortly.',
+          { status, context, requestId: error.requestId, code: error.code }
         );
 
       case 408:
-        return new McpError(
-          ErrorCode.InvalidRequest,
-          `[${context}] Request timeout. ${error.message}`
+        return createMcpError(
+          IntercomMcpErrorCode.ApiUnavailable,
+          `Intercom API timeout. ${error.message}`,
+          { status, context, requestId: error.requestId, code: error.code }
         );
 
       default:
         if (status >= 500) {
-          return new McpError(
-            ErrorCode.InternalError,
-            `[${context}] Intercom server error (${status}). ${error.message}`
+          return createMcpError(
+            IntercomMcpErrorCode.ApiUnavailable,
+            'Intercom API temporarily unavailable. Retry shortly.',
+            { status, context, requestId: error.requestId, code: error.code }
           );
         }
-        return new McpError(
-          ErrorCode.InternalError,
-          `[${context}] ${error.message}`
+        return createMcpError(
+          IntercomMcpErrorCode.InternalError,
+          `[${context}] ${error.message}`,
+          { status, context, requestId: error.requestId, code: error.code }
         );
     }
   }
 
   if (error instanceof Error) {
     logger.error(`[${context}] Unexpected error`, { error: error.message });
-    return new McpError(
-      ErrorCode.InternalError,
+    return createMcpError(
+      IntercomMcpErrorCode.InternalError,
       `[${context}] ${error.message}`
     );
   }
 
-  return new McpError(
-    ErrorCode.InternalError,
+  return createMcpError(
+    IntercomMcpErrorCode.InternalError,
     `[${context}] Unknown error occurred`
   );
 }
