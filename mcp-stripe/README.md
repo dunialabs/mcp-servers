@@ -151,6 +151,18 @@ STRIPE_ACCOUNT=acct_xxxxx           # Connected account ID
 
 **Security Note:** The server automatically detects test vs live mode and logs appropriate warnings.
 
+### Runtime Token Updates
+
+This server also supports runtime token updates from Core via:
+
+- `notifications/token/update`
+  - `accessToken` or `token`
+
+Updated Stripe keys are normalized before use:
+
+- Leading/trailing whitespace is trimmed
+- Optional `Bearer ` prefix is removed
+
 ---
 
 ## ⚙️ Configuration

@@ -8,13 +8,20 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  Notification,
   type CallToolRequest,
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { logger } from './utils/logger.js';
 import { validateEnvironment, validateConnectOperation } from './utils/errors.js';
-import { createStripeClient } from './auth/stripe-client.js';
+import {
+  createStripeClient,
+  normalizeAccessToken,
+  resetStripeClient,
+  validateTokenFormat,
+} from './auth/stripe-client.js';
+import { getServerVersion } from './utils/version.js';
 
 // Import tool functions
 import {
@@ -643,7 +650,7 @@ export function createServer() {
   const server = new Server(
     {
       name: 'mcp-stripe',
-      version: '1.0.0',
+      version: getServerVersion(),
     },
     {
       capabilities: {
@@ -656,6 +663,55 @@ export function createServer() {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: TOOLS,
   }));
+
+  const tokenUpdateSchema = z.object({
+    method: z.literal('notifications/token/update'),
+    params: z
+      .object({
+        token: z.string().optional(),
+        accessToken: z.string().optional(),
+        timestamp: z.number().optional(),
+      })
+      .catchall(z.unknown()),
+  });
+
+  server.setNotificationHandler(
+    tokenUpdateSchema,
+    async (
+      notification: Notification & {
+        method: 'notifications/token/update';
+        params?: {
+          token?: string;
+          accessToken?: string;
+          timestamp?: number;
+          [key: string]: unknown;
+        };
+      }
+    ) => {
+      const newToken =
+        typeof notification?.params?.accessToken === 'string'
+          ? notification.params.accessToken
+          : notification?.params?.token;
+
+      if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
+        logger.error('Invalid token in notifications/token/update');
+        return;
+      }
+
+      const normalizedToken = normalizeAccessToken(newToken);
+
+      if (!validateTokenFormat(normalizedToken)) {
+        logger.error(
+          'Invalid token format in notifications/token/update: expected sk_test_ or sk_live_'
+        );
+        return;
+      }
+
+      process.env.STRIPE_SECRET_KEY = normalizedToken;
+      resetStripeClient();
+      logger.info('STRIPE_SECRET_KEY updated via notification');
+    }
+  );
 
   // Handle tool calls
   server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {

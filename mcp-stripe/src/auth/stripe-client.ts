@@ -3,20 +3,45 @@
  */
 
 import Stripe from 'stripe';
+import { createHash } from 'crypto';
 import { logger } from '../utils/logger.js';
 import type { StripeConfig } from '../types/index.js';
+import { getServerVersion } from '../utils/version.js';
 
 let stripeInstance: Stripe | null = null;
+
+export class TokenValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenValidationError';
+  }
+}
+
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
+export function validateTokenFormat(token: string): boolean {
+  return token.startsWith('sk_test_') || token.startsWith('sk_live_');
+}
 
 /**
  * Create and configure Stripe client
  */
 export function createStripeClient(config?: Partial<StripeConfig>): Stripe {
-  const secretKey = config?.secretKey || process.env.STRIPE_SECRET_KEY;
+  const rawSecretKey = config?.secretKey || process.env.STRIPE_SECRET_KEY;
 
-  if (!secretKey) {
-    throw new Error(
+  if (!rawSecretKey || typeof rawSecretKey !== 'string' || rawSecretKey.trim().length === 0) {
+    throw new TokenValidationError(
       'Stripe secret key is required. Set STRIPE_SECRET_KEY environment variable or pass secretKey in config.'
+    );
+  }
+
+  const secretKey = normalizeAccessToken(rawSecretKey);
+
+  if (!validateTokenFormat(secretKey)) {
+    throw new TokenValidationError(
+      'STRIPE_SECRET_KEY must be a valid Stripe secret key starting with sk_test_ or sk_live_'
     );
   }
 
@@ -27,7 +52,7 @@ export function createStripeClient(config?: Partial<StripeConfig>): Stripe {
     typescript: true,
     appInfo: {
       name: 'mcp-stripe',
-      version: '1.0.0',
+      version: getServerVersion(),
       url: 'https://github.com/dunialabs/mcp-servers',
     },
   });
@@ -55,6 +80,10 @@ export function getStripeClient(): Stripe {
   return stripeInstance;
 }
 
+export function resetStripeClient(): void {
+  stripeInstance = null;
+}
+
 /**
  * Get Stripe request options (for Connect account operations)
  */
@@ -66,9 +95,8 @@ export function getStripeOptions(): Stripe.RequestOptions {
 /**
  * Generate idempotency key for safe retries
  */
-export function generateIdempotencyKey(operation: string, params: any): string {
-  const crypto = require('crypto');
+export function generateIdempotencyKey(operation: string, params: unknown): string {
   const data = JSON.stringify({ operation, params, timestamp: Date.now() });
-  const hash = crypto.createHash('sha256').update(data).digest('hex');
+  const hash = createHash('sha256').update(data).digest('hex');
   return hash.substring(0, 32);
 }
