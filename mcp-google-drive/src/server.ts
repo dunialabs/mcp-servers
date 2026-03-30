@@ -16,6 +16,8 @@ import { listRevisions, getRevision, updateRevision, deleteRevision } from './to
 import { readFileResource, listFileResources } from './resources/file.js';
 import { logger } from './utils/logger.js';
 import { ChangeMonitor, ChangeEvent } from './monitoring/ChangeMonitor.js';
+import { getServerVersion } from './utils/version.js';
+import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
 
 /**
  * Tool schemas using Zod
@@ -200,7 +202,7 @@ export class GoogleDriveMcpServer {
   constructor() {
     this.server = new McpServer({
       name: 'google-drive',
-      version: '1.1.2',
+      version: getServerVersion(),
     });
 
     // Initialize tool handlers map
@@ -244,7 +246,8 @@ export class GoogleDriveMcpServer {
     const TokenUpdateNotificationSchema = z.object({
       method: z.literal('notifications/token/update'),
       params: z.object({
-        token: z.string(),
+        token: z.string().optional(),
+        accessToken: z.string().optional(),
         timestamp: z.number().optional()
       }).catchall(z.unknown())
     }).catchall(z.unknown());
@@ -254,20 +257,31 @@ export class GoogleDriveMcpServer {
       async (notification) => {
         logger.info('[Token] Received token update notification');
 
-        const { token: newToken, timestamp } = notification.params;
+        const newToken =
+          typeof notification.params?.accessToken === 'string'
+            ? notification.params.accessToken
+            : notification.params?.token;
+        const { timestamp } = notification.params;
 
         // Validate token format
-        if (!newToken || typeof newToken !== 'string' || newToken.length === 0) {
+        if (!newToken || typeof newToken !== 'string' || newToken.trim().length === 0) {
           logger.error('[Token] Invalid token received in notification');
           return;
         }
 
+        const normalizedToken = normalizeAccessToken(newToken);
+
+        if (!validateTokenFormat(normalizedToken)) {
+          logger.error('[Token] Invalid token format in notifications/token/update');
+          return;
+        }
+
         // Update environment variable (used by getCurrentToken() in token.ts)
-        process.env.accessToken = newToken;
+        process.env.accessToken = normalizedToken;
 
         logger.info('[Token] Access token updated successfully', {
           timestamp: timestamp ? new Date(timestamp).toISOString() : 'N/A',
-          tokenPrefix: newToken.substring(0, 10) + '...'
+          tokenPrefix: normalizedToken.substring(0, 10) + '...'
         });
       }
     );

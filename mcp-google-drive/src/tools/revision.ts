@@ -84,7 +84,7 @@ export async function listRevisions(params: {
 
     if (error.code === 404) {
       throw createMcpError(
-        GoogleDriveErrorCode.FileNotFound,
+        GoogleDriveErrorCode.NotFound,
         `File not found: ${params.fileId}`
       );
     }
@@ -97,7 +97,7 @@ export async function listRevisions(params: {
     }
 
     throw createMcpError(
-      GoogleDriveErrorCode.NetworkError,
+      GoogleDriveErrorCode.ApiUnavailable,
       `Failed to list revisions: ${error.message}`
     );
   }
@@ -190,7 +190,7 @@ export async function getRevision(params: {
 
     if (error.code === 404) {
       throw createMcpError(
-        GoogleDriveErrorCode.FileNotFound,
+        GoogleDriveErrorCode.NotFound,
         `File or revision not found: ${params.fileId}/${params.revisionId}`
       );
     }
@@ -203,7 +203,7 @@ export async function getRevision(params: {
     }
 
     throw createMcpError(
-      GoogleDriveErrorCode.NetworkError,
+      GoogleDriveErrorCode.ApiUnavailable,
       `Failed to get revision: ${error.message}`
     );
   }
@@ -275,7 +275,7 @@ export async function updateRevision(params: {
 
     if (error.code === 404) {
       throw createMcpError(
-        GoogleDriveErrorCode.FileNotFound,
+        GoogleDriveErrorCode.NotFound,
         `File or revision not found: ${params.fileId}/${params.revisionId}`
       );
     }
@@ -288,7 +288,7 @@ export async function updateRevision(params: {
     }
 
     throw createMcpError(
-      GoogleDriveErrorCode.NetworkError,
+      GoogleDriveErrorCode.ApiUnavailable,
       `Failed to update revision: ${error.message}`
     );
   }
@@ -337,7 +337,7 @@ export async function deleteRevision(params: {
 
     if (error.code === 404) {
       throw createMcpError(
-        GoogleDriveErrorCode.FileNotFound,
+        GoogleDriveErrorCode.NotFound,
         `File or revision not found: ${params.fileId}/${params.revisionId}`
       );
     }
@@ -350,7 +350,7 @@ export async function deleteRevision(params: {
     }
 
     throw createMcpError(
-      GoogleDriveErrorCode.NetworkError,
+      GoogleDriveErrorCode.ApiUnavailable,
       `Failed to delete revision: ${error.message}`
     );
   }

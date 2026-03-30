@@ -114,6 +114,18 @@ The server reads the Google OAuth access token from the `accessToken` environmen
 
 **Note**: Token refresh is handled by PETA Core. This server only needs the access token.
 
+### Runtime Token Updates
+
+This server also supports runtime token updates from Core via:
+
+- `notifications/token/update`
+  - `accessToken` or `token`
+
+Updated tokens are normalized before use:
+
+- Leading/trailing whitespace is trimmed
+- Optional `Bearer ` prefix is removed
+
 ## Required Google OAuth Scopes
 
 - `https://www.googleapis.com/auth/drive` - Full access to Google Drive

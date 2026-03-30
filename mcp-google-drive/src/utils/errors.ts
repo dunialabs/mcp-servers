@@ -5,30 +5,26 @@
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
+import { TokenValidationError } from '../auth/token.js';
 
 /**
  * Application-specific error codes (extends MCP standard error codes)
  */
 export enum GoogleDriveErrorCode {
-  // MCP Standard Errors (from ErrorCode enum)
-  ParseError = ErrorCode.ParseError,           // -32700: Invalid JSON
-  InvalidRequest = ErrorCode.InvalidRequest,   // -32600: Invalid request
-  MethodNotFound = ErrorCode.MethodNotFound,   // -32601: Method not found
-  InvalidParams = ErrorCode.InvalidParams,     // -32602: Invalid parameters
-  InternalError = ErrorCode.InternalError,     // -32603: Internal error
-
-  // Google Drive specific errors (custom range: -32000 to -32099)
-  FileNotFound = -32010,                       // File not found
-  PermissionDenied = -32011,                   // Permission denied
-  QuotaExceeded = -32012,                      // Storage quota exceeded
-  FileSizeTooLarge = -32013,                   // File size exceeds limit
-  InvalidFileType = -32014,                    // Invalid or unsupported file type
-  InvalidFileId = -32015,                      // Invalid file ID format
-  InvalidMimeType = -32016,                    // Invalid MIME type
-  FolderRequired = -32017,                     // Operation requires a folder
-  AuthenticationFailed = -32018,               // Authentication failed
-  TokenExpired = -32019,                       // Access token expired
-  NetworkError = -32020,                       // Network/API communication error
+  ParseError = ErrorCode.ParseError,
+  InvalidRequest = ErrorCode.InvalidRequest,
+  MethodNotFound = ErrorCode.MethodNotFound,
+  InvalidParams = ErrorCode.InvalidParams,
+  InternalError = ErrorCode.InternalError,
+  AuthenticationFailed = -32030,
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  RateLimited = -32034,
+  ApiUnavailable = -32035,
+  InvalidFileId = -32036,
+  InvalidMimeType = -32037,
+  FolderRequired = -32038,
+  FileSizeTooLarge = -32039,
 }
 
 /**
@@ -39,7 +35,6 @@ export function createMcpError(
   message: string,
   data?: unknown
 ): McpError {
-  logger.error(`[McpError] Code: ${code}, Message: ${message}`, data);
   return new McpError(code, message, data);
 }
 
@@ -47,8 +42,20 @@ export function createMcpError(
  * Handle Google Drive API errors and convert to MCP errors
  */
 export function handleGoogleDriveError(error: any, context: string): McpError {
+  if (error instanceof McpError) {
+    return error;
+  }
+
   // Log the original error for debugging
   logger.error(`[GoogleDrive] ${context}:`, error);
+
+  if (error instanceof TokenValidationError) {
+    return createMcpError(
+      GoogleDriveErrorCode.AuthenticationFailed,
+      'Authentication failed or token expired. Reconnect Google Drive integration.',
+      { context }
+    );
+  }
 
   // Extract error details from Google API error
   const statusCode = error?.code || error?.response?.status;
@@ -59,7 +66,7 @@ export function handleGoogleDriveError(error: any, context: string): McpError {
   switch (statusCode) {
     case 404:
       return createMcpError(
-        GoogleDriveErrorCode.FileNotFound,
+        GoogleDriveErrorCode.NotFound,
         `File not found: ${errorMessage}`,
         errorDetails
       );
@@ -94,7 +101,7 @@ export function handleGoogleDriveError(error: any, context: string): McpError {
 
     case 429:
       return createMcpError(
-        GoogleDriveErrorCode.QuotaExceeded,
+        GoogleDriveErrorCode.RateLimited,
         `Rate limit or quota exceeded: ${errorMessage}`,
         errorDetails
       );
@@ -104,7 +111,7 @@ export function handleGoogleDriveError(error: any, context: string): McpError {
     case 503:
     case 504:
       return createMcpError(
-        GoogleDriveErrorCode.NetworkError,
+        GoogleDriveErrorCode.ApiUnavailable,
         `Google Drive API error: ${errorMessage}`,
         errorDetails
       );

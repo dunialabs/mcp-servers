@@ -203,8 +203,6 @@ export async function updateFile(params: UpdateFileParams) {
       updateOptions.removeParents = removeParents.join(',');
     }
 
-    let response;
-
     if (content !== undefined) {
       // Update file content
       // First get current file to check MIME type
@@ -226,7 +224,7 @@ export async function updateFile(params: UpdateFileParams) {
       updateOptions.media = media;
     }
 
-    response = await drive.files.update(updateOptions);
+    const response = await drive.files.update(updateOptions);
 
     const file = response.data;
 

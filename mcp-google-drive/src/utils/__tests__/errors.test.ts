@@ -5,6 +5,8 @@ import {
   createMcpError,
   GoogleDriveErrorCode
 } from '../errors.js';
+import { TokenValidationError } from '../../auth/token.js';
+import { handleGoogleDriveError } from '../errors.js';
 
 describe('errors.ts', () => {
   describe('validateFileIdOrThrow', () => {
@@ -55,6 +57,17 @@ describe('errors.ts', () => {
       // Error message includes the error code prefix
       expect(error.message).toContain('Test error message');
       expect(error.message).toContain('MCP error');
+    });
+  });
+
+  describe('handleGoogleDriveError', () => {
+    it('maps token validation errors to authentication failures', () => {
+      const error = handleGoogleDriveError(
+        new TokenValidationError('bad token'),
+        'getFileMetadata'
+      );
+
+      expect(error.code).toBe(GoogleDriveErrorCode.AuthenticationFailed);
     });
   });
 });
