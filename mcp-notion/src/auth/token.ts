@@ -22,15 +22,28 @@
  * @returns Current Notion token
  * @throws Error if token is not set or invalid
  */
-export function getCurrentToken(): string {
-  const token = process.env.notionToken;
+export class TokenValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenValidationError';
+  }
+}
 
-  if (!token) {
-    throw new Error('notionToken environment variable not set');
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
+export function getCurrentToken(): string {
+  const rawToken = process.env.notionToken ?? process.env.accessToken;
+
+  if (!rawToken || typeof rawToken !== 'string' || rawToken.trim().length === 0) {
+    throw new TokenValidationError('notionToken environment variable not set');
   }
 
+  const token = normalizeAccessToken(rawToken);
+
   if (!validateTokenFormat(token)) {
-    throw new Error('Invalid notionToken format');
+    throw new TokenValidationError('Invalid notionToken format');
   }
 
   return token;

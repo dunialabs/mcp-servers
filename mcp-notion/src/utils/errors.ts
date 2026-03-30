@@ -5,32 +5,26 @@
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
+import { TokenValidationError } from '../auth/token.js';
 
 /**
  * Application-specific error codes (extends MCP standard error codes)
  */
 export enum NotionErrorCode {
-  // MCP Standard Errors (from ErrorCode enum)
-  ParseError = ErrorCode.ParseError,           // -32700: Invalid JSON
-  InvalidRequest = ErrorCode.InvalidRequest,   // -32600: Invalid request
-  MethodNotFound = ErrorCode.MethodNotFound,   // -32601: Method not found
-  InvalidParams = ErrorCode.InvalidParams,     // -32602: Invalid parameters
-  InternalError = ErrorCode.InternalError,     // -32603: Internal error
-
-  // Notion specific errors (custom range: -32000 to -32099)
-  PageNotFound = -32010,                       // Page not found
-  DatabaseNotFound = -32011,                   // Database not found
-  BlockNotFound = -32012,                      // Block not found
-  PermissionDenied = -32013,                   // Permission denied
-  InvalidPageId = -32014,                      // Invalid page ID format
-  InvalidDatabaseId = -32015,                  // Invalid database ID format
-  InvalidBlockId = -32016,                     // Invalid block ID format
-  AuthenticationFailed = -32017,               // Authentication failed
-  TokenExpired = -32018,                       // Access token expired
-  NetworkError = -32019,                       // Network/API communication error
-  RateLimitExceeded = -32020,                  // Rate limit exceeded
-  ValidationFailed = -32021,                   // Validation failed
-  ConflictError = -32022,                      // Conflict error (version mismatch)
+  ParseError = ErrorCode.ParseError,
+  InvalidRequest = ErrorCode.InvalidRequest,
+  MethodNotFound = ErrorCode.MethodNotFound,
+  InvalidParams = ErrorCode.InvalidParams,
+  InternalError = ErrorCode.InternalError,
+  AuthenticationFailed = -32030,
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  RateLimitExceeded = -32034,
+  ApiUnavailable = -32035,
+  InvalidPageId = -32036,
+  InvalidDatabaseId = -32037,
+  InvalidBlockId = -32038,
+  ConflictError = -32039,
 }
 
 /**
@@ -41,7 +35,6 @@ export function createMcpError(
   message: string,
   data?: unknown
 ): McpError {
-  logger.error(`[McpError] Code: ${code}, Message: ${message}`, data);
   return new McpError(code, message, data);
 }
 
@@ -49,8 +42,20 @@ export function createMcpError(
  * Handle Notion API errors and convert to MCP errors
  */
 export function handleNotionError(error: any, context: string): McpError {
+  if (error instanceof McpError) {
+    return error;
+  }
+
   // Log the original error for debugging
   logger.error(`[Notion] ${context}:`, error);
+
+  if (error instanceof TokenValidationError) {
+    return createMcpError(
+      NotionErrorCode.AuthenticationFailed,
+      'Authentication failed or token expired. Reconnect Notion integration.',
+      { context }
+    );
+  }
 
   // Extract error details from Notion API error
   const statusCode = error?.status;
@@ -82,7 +87,7 @@ export function handleNotionError(error: any, context: string): McpError {
   switch (statusCode) {
     case 404:
       return createMcpError(
-        NotionErrorCode.PageNotFound,
+        NotionErrorCode.NotFound,
         `Resource not found: ${errorMessage}`,
         errorData
       );
@@ -127,7 +132,7 @@ export function handleNotionError(error: any, context: string): McpError {
     case 503:
     case 504:
       return createMcpError(
-        NotionErrorCode.NetworkError,
+        NotionErrorCode.ApiUnavailable,
         `Notion API error: ${errorMessage}`,
         errorData
       );

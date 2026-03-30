@@ -12,6 +12,7 @@
     "dev": "tsx watch src/stdio.ts",
     "start": "node dist/stdio.js",
     "clean": "rm -rf dist",
+    "test": "vitest",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -45,7 +46,8 @@
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "tsx": "^4.7.1",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^1.6.1"
   },
   "engines": {
     "node": ">=18.0.0"

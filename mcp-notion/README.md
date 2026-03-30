@@ -111,6 +111,18 @@ PETA Console handles OAuth flow and passes the access token:
 
 **Note**: Token refresh is handled by PETA Core when using OAuth mode.
 
+### Runtime Token Updates
+
+This server also supports runtime token updates from Core via:
+
+- `notifications/token/update`
+  - `accessToken` or `token`
+
+Updated tokens are normalized before use:
+
+- Leading/trailing whitespace is trimmed
+- Optional `Bearer ` prefix is removed
+
 ## Claude Desktop Configuration (Standalone Mode)
 
 To use this server with Claude Desktop in standalone mode:
