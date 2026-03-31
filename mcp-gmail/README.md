@@ -34,6 +34,12 @@ Identity scopes recommended for Console/Core account linkage:
 This server reads `process.env.accessToken` and supports runtime token updates from Core via:
 
 - `notifications/token/update`
+  - `accessToken` or `token`
+
+Updated tokens are normalized before use:
+
+- Leading/trailing whitespace is trimmed
+- Optional `Bearer ` prefix is removed
 
 No browser OAuth flow is implemented in this server.
 

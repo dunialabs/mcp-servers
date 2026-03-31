@@ -1,5 +1,6 @@
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
+import { TokenValidationError } from '../auth/token.js';
 
 export enum GmailErrorCode {
   InvalidParams = ErrorCode.InvalidParams,
@@ -7,13 +8,11 @@ export enum GmailErrorCode {
   AuthenticationFailed = -32030,
   PermissionDenied = -32031,
   NotFound = -32032,
-  QuotaExceeded = -32033,
   RateLimited = -32034,
   ApiUnavailable = -32035,
 }
 
 export function createMcpError(code: number, message: string, data?: unknown): McpError {
-  logger.error(`[McpError] code=${code} message=${message}`, data);
   return new McpError(code, message, data);
 }
 
@@ -32,6 +31,19 @@ function asApiErrorShape(error: unknown): ApiErrorShape {
 }
 
 export function handleGmailApiError(error: unknown, context: string): McpError {
+  if (error instanceof McpError) {
+    return error;
+  }
+
+  logger.error(`[Gmail] ${context}:`, error);
+
+  if (error instanceof TokenValidationError) {
+    return createMcpError(
+      GmailErrorCode.AuthenticationFailed,
+      'Authentication failed or token expired. Reconnect Gmail integration.'
+    );
+  }
+
   const parsed = asApiErrorShape(error);
   const status = parsed.code || parsed.response?.status;
   const message = parsed.message || 'Unknown Gmail API error';
