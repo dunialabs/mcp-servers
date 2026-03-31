@@ -76,6 +76,10 @@ npm run build
 
 The server is designed to work with PETA Core, which handles OAuth authentication and token refresh.
 
+Runtime token refresh is supported via `notifications/token/update`. The server accepts either
+`accessToken` or `token` in the notification payload and normalizes optional `Bearer ` prefixes
+before storing the latest access token in memory.
+
 ```json
 {
   "mcpServers": {
@@ -141,6 +145,13 @@ npm run lint
 # Format
 npm run format
 ```
+
+## Runtime Token Model
+
+- Initial auth reads `accessToken` from the environment
+- Runtime refresh supports `notifications/token/update`
+- The notification payload may contain either `accessToken` or `token`
+- Optional `Bearer ` prefixes are stripped before validation and reuse
 
 ## License
 

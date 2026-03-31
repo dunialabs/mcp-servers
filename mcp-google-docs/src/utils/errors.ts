@@ -5,6 +5,7 @@
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
+import { TokenValidationError } from '../auth/token.js';
 
 /**
  * Application-specific error codes (extends MCP standard error codes)
@@ -18,13 +19,12 @@ export enum GoogleDocsErrorCode {
   InternalError = ErrorCode.InternalError,     // -32603: Internal error
 
   // Google Docs specific errors (custom range: -32000 to -32099)
-  DocumentNotFound = -32010,                   // Document not found
-  PermissionDenied = -32011,                   // Permission denied
-  QuotaExceeded = -32012,                      // API quota exceeded
+  AuthenticationFailed = -32030,               // Authentication failed or token expired
+  PermissionDenied = -32031,                   // Permission denied
+  DocumentNotFound = -32032,                   // Document not found
+  RateLimited = -32034,                        // API quota exceeded / rate limited
+  ApiUnavailable = -32035,                     // Upstream API/network unavailable
   InvalidDocumentId = -32015,                  // Invalid document ID format
-  AuthenticationFailed = -32018,               // Authentication failed
-  TokenExpired = -32019,                       // Access token expired
-  NetworkError = -32020,                       // Network/API communication error
   InvalidRange = -32021,                       // Invalid content range
   ContentTooLarge = -32022,                    // Content exceeds size limit
 }
@@ -37,7 +37,6 @@ export function createMcpError(
   message: string,
   data?: unknown
 ): McpError {
-  logger.error(`[McpError] Code: ${code}, Message: ${message}`, data);
   return new McpError(code, message, data);
 }
 
@@ -45,8 +44,19 @@ export function createMcpError(
  * Handle Google Docs API errors and convert to MCP errors
  */
 export function handleGoogleDocsError(error: any, context: string): McpError {
+  if (error instanceof McpError) {
+    return error;
+  }
+
   // Log the original error for debugging
   logger.error(`[GoogleDocs] ${context}:`, error);
+
+  if (error instanceof TokenValidationError) {
+    return createMcpError(
+      GoogleDocsErrorCode.AuthenticationFailed,
+      error.message
+    );
+  }
 
   // Extract error details from Google API error
   const statusCode = error?.code || error?.response?.status;
@@ -85,7 +95,7 @@ export function handleGoogleDocsError(error: any, context: string): McpError {
 
     case 429:
       return createMcpError(
-        GoogleDocsErrorCode.QuotaExceeded,
+        GoogleDocsErrorCode.RateLimited,
         `Rate limit or quota exceeded: ${errorMessage}`,
         errorDetails
       );
@@ -95,7 +105,7 @@ export function handleGoogleDocsError(error: any, context: string): McpError {
     case 503:
     case 504:
       return createMcpError(
-        GoogleDocsErrorCode.NetworkError,
+        GoogleDocsErrorCode.ApiUnavailable,
         `Google Docs API error: ${errorMessage}`,
         errorDetails
       );

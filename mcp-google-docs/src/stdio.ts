@@ -9,6 +9,7 @@ import { config } from 'dotenv';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { MCPServer } from './server.js';
 import { logger } from './utils/logger.js';
+import { getServerVersion } from './utils/version.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -32,7 +33,7 @@ async function main() {
     // Create server instance
     mcpServer = new MCPServer({
       name: process.env.SERVER_NAME || 'mcp-google-docs',
-      version: process.env.SERVER_VERSION || '1.0.0',
+      version: getServerVersion(),
       description: 'Google Docs MCP Server - Read, write, and edit Google Documents',
     });
 

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { logger } from './utils/logger.js';
 import { handleGoogleDocsError } from './utils/errors.js';
 import type { ServerConfig } from './types/index.js';
+import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
 
 // Import tool implementations
 import { listDocuments, searchDocuments } from './tools/list.js';
@@ -103,7 +104,8 @@ export class MCPServer {
     const TokenUpdateNotificationSchema = z.object({
       method: z.literal('notifications/token/update'),
       params: z.object({
-        token: z.string(),
+        token: z.string().optional(),
+        accessToken: z.string().optional(),
         timestamp: z.number().optional()
       }).catchall(z.unknown())
     }).catchall(z.unknown());
@@ -113,20 +115,24 @@ export class MCPServer {
       async (notification) => {
         logger.info('[Token] Received token update notification');
 
-        const { token: newToken, timestamp } = notification.params;
+        const newToken = notification.params.accessToken ?? notification.params.token;
+        const { timestamp } = notification.params;
 
         // Validate token format
-        if (!newToken || typeof newToken !== 'string' || newToken.length === 0) {
+        const normalizedToken =
+          typeof newToken === 'string' ? normalizeAccessToken(newToken) : '';
+
+        if (!newToken || typeof newToken !== 'string' || !validateTokenFormat(normalizedToken)) {
           logger.error('[Token] Invalid token received in notification');
           return;
         }
 
         // Update environment variable (used by getCurrentToken() in common.ts)
-        process.env.accessToken = newToken;
+        process.env.accessToken = normalizedToken;
 
         logger.info('[Token] Access token updated successfully', {
           timestamp: timestamp ? new Date(timestamp).toISOString() : 'N/A',
-          tokenPrefix: newToken.substring(0, 10) + '...'
+          tokenPrefix: process.env.accessToken.substring(0, 10) + '...'
         });
       }
     );
