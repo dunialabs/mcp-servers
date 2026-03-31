@@ -875,7 +875,15 @@ ErrorCode.InternalError       // -32603: Internal error
 
 ### Custom Error Codes
 
-If you need application-specific error codes, use the **-32010 to -32099** range (to avoid conflicts with official codes):
+If you need application-specific error codes, use the JSON-RPC implementation-defined server error range. In this repository, the current house style is to reserve:
+
+- `-32030` `AuthenticationFailed`
+- `-32031` `PermissionDenied`
+- `-32032` `NotFound`
+- `-32034` `RateLimited`
+- `-32035` `ApiUnavailable`
+
+This is a **repository convention**, not an MCP-only official standard. We use it because Core and related platform components benefit from machine-classifiable auth/permission/rate-limit failures.
 
 ```typescript
 export enum AppErrorCode {
@@ -883,11 +891,22 @@ export enum AppErrorCode {
   InvalidParams = ErrorCode.InvalidParams,  // -32602
   InternalError = ErrorCode.InternalError,  // -32603
 
-  // Custom errors (starting from -32010)
-  NotFound = -32010,
-  OperationFailed = -32011,
-  ValidationFailed = -32012,
+  // Repository-standard application errors
+  AuthenticationFailed = -32030,
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  RateLimited = -32034,
+  ApiUnavailable = -32035,
 }
+```
+
+If your MCP is a simple tool server where the client only needs to display a user-facing error message, returning a tool result with `isError: true` is also valid and closer to MCP Apps/tool-result guidance:
+
+```typescript
+return {
+  isError: true,
+  content: [{ type: 'text', text: 'Authentication failed. Reconnect integration.' }],
+};
 ```
 
 The template also includes HTTP-to-MCP mapping helpers in `src/utils/errors.ts`:
@@ -896,6 +915,26 @@ The template also includes HTTP-to-MCP mapping helpers in `src/utils/errors.ts`:
 - `createHttpStatusError(status, message, data?)`
 
 Use them to normalize API errors (401/403/404/429/5xx) consistently.
+
+### Choosing Between `McpError` and `isError: true`
+
+Use `McpError` when:
+
+- Core/platform code needs to branch on error type
+- You want auth/reconnect prompts to distinguish `AuthenticationFailed` from generic failures
+- You need consistent monitoring/analytics across many MCPs
+
+Use `isError: true` when:
+
+- The tool failure is only meant for display to the user
+- The client does not need machine-readable error classes
+- You are building a lightweight/demo MCP and do not need platform-level error routing
+
+Current repository default:
+
+- **Protocol / validation errors** → use standard `McpError` codes (`-32602`, `-32603`, etc.)
+- **Connector/API business failures** → prefer repository-standard `-32030 ~ -32035`
+- **Purely presentation-oriented tool failures** → `isError: true` is acceptable
 
 ### Using in Tools
 

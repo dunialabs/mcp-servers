@@ -311,6 +311,25 @@ In the `setupResources()` method of `src/server.ts`:
 }
 ```
 
+#### Error Strategy Decision
+
+Pick one of these patterns intentionally:
+
+1. `throw McpError(...)`
+- Use when the platform/client needs machine-readable error classes
+- Repository default for connector/API failures:
+  - `-32030` AuthenticationFailed
+  - `-32031` PermissionDenied
+  - `-32032` NotFound
+  - `-32034` RateLimited
+  - `-32035` ApiUnavailable
+
+2. `return { isError: true, content: [...] }`
+- Use when the tool only needs to show a user-facing failure message
+- Suitable for lightweight/demo tools where Core does not branch on error codes
+
+Do not mix these two styles randomly inside one project. Choose a default per MCP and document it in the README.
+
 **2. Implement read logic** (in ReadResourceRequestSchema handler's switch):
 
 ```typescript

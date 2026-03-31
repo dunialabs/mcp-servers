@@ -80,6 +80,10 @@ zendeskApiToken=your_api_token_here
 
 Console automatically provides OAuth tokens and handles refresh.
 
+Runtime token refresh is supported via `notifications/token/update`. The server accepts either
+`accessToken` or `token` in the notification payload and normalizes optional `Bearer ` prefixes
+before storing the latest OAuth token.
+
 ```json
 {
   "env": {
@@ -189,6 +193,13 @@ Add to your Claude Desktop configuration file:
 | `zendeskApiToken` | For API Token | Your Zendesk API token |
 | `accessToken` | For OAuth | OAuth access token (provided by Console) |
 | `zendeskApiTimeout` | No | API request timeout in ms (default: 30000) |
+
+## Runtime Token Model
+
+- Initial OAuth auth reads `accessToken` from the environment
+- Runtime refresh supports `notifications/token/update`
+- The notification payload may contain either `accessToken` or `token`
+- Optional `Bearer ` prefixes are stripped before validation and reuse
 
 ## Development
 

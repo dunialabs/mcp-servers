@@ -7,6 +7,7 @@
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
+import { TokenValidationError } from '../auth/token.js';
 
 /**
  * Zendesk API Error
@@ -20,6 +21,14 @@ export class ZendeskError extends Error {
     super(message);
     this.name = 'ZendeskError';
   }
+}
+
+export enum ZendeskErrorCode {
+  AuthenticationFailed = -32030,
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  RateLimited = -32034,
+  ApiUnavailable = -32035,
 }
 
 /**
@@ -74,25 +83,37 @@ export async function handleZendeskError(response: Response): Promise<ZendeskErr
  * @returns McpError with appropriate code and message
  */
 export function toMcpError(error: unknown, context: string): McpError {
+  if (error instanceof McpError) {
+    return error;
+  }
+
+  if (error instanceof TokenValidationError) {
+    logger.error(`[${context}] Authentication configuration error`, { error: error.message });
+    return new McpError(
+      ZendeskErrorCode.AuthenticationFailed,
+      `[${context}] Authentication failed. ${error.message}`
+    );
+  }
+
   if (error instanceof ZendeskError) {
     const status = error.status;
 
     switch (status) {
       case 401:
         return new McpError(
-          ErrorCode.InvalidRequest,
+          ZendeskErrorCode.AuthenticationFailed,
           `[${context}] Authentication failed. Please check your Zendesk credentials.`
         );
 
       case 403:
         return new McpError(
-          ErrorCode.InvalidRequest,
+          ZendeskErrorCode.PermissionDenied,
           `[${context}] Permission denied. Your Zendesk account doesn't have access to this resource.`
         );
 
       case 404:
         return new McpError(
-          ErrorCode.InvalidRequest,
+          ZendeskErrorCode.NotFound,
           `[${context}] Resource not found. ${error.message}`
         );
 
@@ -104,20 +125,20 @@ export function toMcpError(error: unknown, context: string): McpError {
 
       case 429:
         return new McpError(
-          ErrorCode.InvalidRequest,
+          ZendeskErrorCode.RateLimited,
           `[${context}] Rate limit exceeded. Please try again later.`
         );
 
       case 408:
         return new McpError(
-          ErrorCode.InvalidRequest,
+          ZendeskErrorCode.ApiUnavailable,
           `[${context}] Request timeout. ${error.message}`
         );
 
       default:
         if (status >= 500) {
           return new McpError(
-            ErrorCode.InternalError,
+            ZendeskErrorCode.ApiUnavailable,
             `[${context}] Zendesk server error (${status}). ${error.message}`
           );
         }

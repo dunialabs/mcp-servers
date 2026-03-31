@@ -12,15 +12,26 @@
  * - InvalidParams = -32602
  * - InternalError = -32603
  *
- * For application-specific errors, use the custom range -32010 to -32099 (avoiding -32000/-32001 used by MCP SDK).
+ * For application-specific errors, use a repository-wide convention in the
+ * implementation-defined server-error range. This template currently uses:
+ * - -32030 AuthenticationFailed
+ * - -32031 PermissionDenied
+ * - -32032 NotFound
+ * - -32034 RateLimited
+ * - -32035 ApiUnavailable
+ *
+ * Note: this is a repository convention for machine-readable connector errors,
+ * not an MCP-only official requirement. Lightweight/demo tools may instead
+ * return tool results with `isError: true` when machine classification is not needed.
  */
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
 
 /**
- * Application-specific error codes (custom range: -32010 to -32099)
- * These extend MCP standard errors without conflicting with official codes.
+ * Application-specific error codes used by this repository's default template.
+ * These extend MCP standard errors for connector/API failures where Core or
+ * other platform components benefit from machine-readable error classes.
  *
  * When building a server that calls external APIs, map HTTP status codes to
  * the appropriate code here and throw via createMcpError().

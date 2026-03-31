@@ -6,7 +6,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { logger } from './utils/logger.js';
-import { getCurrentCredentials, getAuthMode } from './auth/token.js';
+import { getCurrentCredentials, getAuthMode, normalizeAccessToken, validateTokenFormat } from './auth/token.js';
+import { getServerVersion } from './utils/version.js';
 
 // Import tools
 import * as ticketTools from './tools/tickets.js';
@@ -22,7 +23,7 @@ export class ZendeskMcpServer {
   constructor() {
     this.server = new McpServer({
       name: 'zendesk',
-      version: '1.0.0',
+      version: getServerVersion(),
     });
   }
 
@@ -56,7 +57,8 @@ export class ZendeskMcpServer {
     const TokenUpdateNotificationSchema = z.object({
       method: z.literal('notifications/token/update'),
       params: z.object({
-        token: z.string(),
+        token: z.string().optional(),
+        accessToken: z.string().optional(),
         timestamp: z.number().optional(),
       }).catchall(z.unknown()),
     }).catchall(z.unknown());
@@ -66,19 +68,22 @@ export class ZendeskMcpServer {
       async (notification) => {
         logger.info('[Token] Received token update notification');
 
-        const { token: newToken, timestamp } = notification.params;
+        const newToken = notification.params.accessToken ?? notification.params.token;
+        const { timestamp } = notification.params;
+        const normalizedToken =
+          typeof newToken === 'string' ? normalizeAccessToken(newToken) : '';
 
-        if (!newToken || typeof newToken !== 'string' || newToken.length === 0) {
+        if (!newToken || typeof newToken !== 'string' || !validateTokenFormat(normalizedToken)) {
           logger.error('[Token] Invalid token received in notification');
           return;
         }
 
         // Update environment variable (used by getCurrentCredentials() in token.ts)
-        process.env.accessToken = newToken;
+        process.env.accessToken = normalizedToken;
 
         logger.info('[Token] Access token updated successfully', {
           timestamp: timestamp ? new Date(timestamp).toISOString() : 'N/A',
-          tokenPrefix: newToken.substring(0, 10) + '...',
+          tokenPrefix: normalizedToken.substring(0, 10) + '...',
         });
       }
     );

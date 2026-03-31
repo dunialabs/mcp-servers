@@ -276,6 +276,9 @@ Copy this checklist and check each item:
 - [ ] `src/utils/` - Add your utility functions
 - [ ] Token update precedence is consistent: `accessToken ?? token`
 - [ ] API auth errors mapped correctly (`AuthenticationFailed` for token issues, `PermissionDenied` for scope)
+- [ ] Error strategy is chosen explicitly and documented:
+  - repository-standard `McpError` codes for connector/API failures, or
+  - `isError: true` for presentation-only tool failures
 - [ ] Pagination params match endpoint contract (cursor vs offset/start)
 
 ### Tests

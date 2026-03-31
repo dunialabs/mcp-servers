@@ -32,6 +32,21 @@ export interface ZendeskCredentials {
   apiToken?: string;
 }
 
+export class TokenValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TokenValidationError';
+  }
+}
+
+export function normalizeAccessToken(token: string): string {
+  return token.trim().replace(/^Bearer\s+/i, '').trim();
+}
+
+export function validateTokenFormat(token: string): boolean {
+  return typeof token === 'string' && token.length > 0;
+}
+
 /**
  * Get current Zendesk credentials
  *
@@ -46,7 +61,7 @@ export function getCurrentCredentials(): ZendeskCredentials {
   const subdomain = process.env.zendeskSubdomain;
 
   if (!subdomain) {
-    throw new Error(
+    throw new TokenValidationError(
       'zendeskSubdomain is required.\n' +
       'Example: If your Zendesk is https://mycompany.zendesk.com, ' +
       'set zendeskSubdomain=mycompany'
@@ -56,10 +71,16 @@ export function getCurrentCredentials(): ZendeskCredentials {
   // Priority 1: OAuth Token (Console production or manual OAuth)
   const accessToken = process.env.accessToken;
   if (accessToken) {
+    const normalizedToken = normalizeAccessToken(accessToken);
+
+    if (!validateTokenFormat(normalizedToken)) {
+      throw new TokenValidationError('Invalid accessToken format');
+    }
+
     return {
       mode: AuthMode.OAUTH,
       subdomain,
-      accessToken,
+      accessToken: normalizedToken,
     };
   }
 
@@ -111,7 +132,7 @@ export function getAuthHeader(): string {
     }
 
     default:
-      throw new Error(`Unknown auth mode: ${creds.mode}`);
+      throw new TokenValidationError(`Unknown auth mode: ${creds.mode}`);
   }
 }
 
