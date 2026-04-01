@@ -8,11 +8,9 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod/v3';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { handleUnknownError } from './utils/errors.js';
 import { logger } from './utils/logger.js';
+import { getServerVersion } from './utils/version.js';
 
 import { listDatabases, listTables, describeTable, getTableStats } from './tools/schema.js';
 import {
@@ -23,10 +21,7 @@ import {
   showProcessList,
 } from './tools/query.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
-const VERSION = packageJson.version as string;
+const VERSION = getServerVersion();
 
 // ==================== Zod Schemas ====================
 

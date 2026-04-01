@@ -6,7 +6,7 @@ import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
 
 /**
- * Application-specific error codes (custom range: -32010 to -32099)
+ * Repository-standard application error codes used by this server.
  */
 export enum MysqlErrorCode {
   // MCP Standard Errors
@@ -16,19 +16,13 @@ export enum MysqlErrorCode {
   InvalidParams = ErrorCode.InvalidParams,   // -32602
   InternalError = ErrorCode.InternalError,   // -32603
 
-  // MySQL-specific errors
-  DatabaseConnectionFailed = -32010,
-  QueryExecutionFailed = -32011,
-  TransactionFailed = -32012,
-  InvalidQuery = -32013,
-  PermissionDenied = -32014,
-  TableNotFound = -32015,
-  QueryTimeout = -32016,
-  DatabaseNotFound = -32017,
+  // Repository-standard application errors
+  PermissionDenied = -32031,
+  NotFound = -32032,
+  ApiUnavailable = -32035,
 }
 
 export function createMcpError(code: number, message: string, data?: unknown): McpError {
-  logger.error(`[McpError] Code: ${code}, Message: ${message}`, data);
   return new McpError(code, message, data);
 }
 
@@ -42,18 +36,14 @@ export function createInternalError(message: string, data?: unknown): McpError {
 
 export function createConnectionError(message: string, data?: unknown): McpError {
   return createMcpError(
-    MysqlErrorCode.DatabaseConnectionFailed,
+    MysqlErrorCode.ApiUnavailable,
     `Database connection failed: ${message}`,
     data
   );
 }
 
 export function createQueryError(message: string, data?: unknown): McpError {
-  return createMcpError(
-    MysqlErrorCode.QueryExecutionFailed,
-    `Query execution failed: ${message}`,
-    data
-  );
+  return createMcpError(ErrorCode.InternalError, `Query execution failed: ${message}`, data);
 }
 
 /**
@@ -79,12 +69,12 @@ function isMysqlError(error: unknown): error is MysqlError {
 }
 
 export function handleUnknownError(error: unknown, context: string): McpError {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  logger.error(`[${context}] Error:`, errorMessage);
-
   if (error instanceof McpError) {
     return error;
   }
+
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  logger.error(`[${context}] Error:`, errorMessage);
 
   if (isMysqlError(error)) {
     const errno = error.errno;
@@ -98,19 +88,19 @@ export function handleUnknownError(error: unknown, context: string): McpError {
         );
       case 1049: // Unknown database
         return createMcpError(
-          MysqlErrorCode.DatabaseNotFound,
+          MysqlErrorCode.NotFound,
           `Database not found: ${error.message}`
         );
       case 1051: // Unknown table (DROP TABLE)
       case 1146: // Table doesn't exist
         return createMcpError(
-          MysqlErrorCode.TableNotFound,
+          MysqlErrorCode.NotFound,
           `Table not found: ${error.message}`
         );
       case 1054: // Unknown column
       case 1064: // SQL syntax error
         return createMcpError(
-          MysqlErrorCode.InvalidQuery,
+          ErrorCode.InvalidParams,
           `Invalid query: ${error.message}`
         );
       case 1062: // Duplicate entry (unique violation)
@@ -119,7 +109,7 @@ export function handleUnknownError(error: unknown, context: string): McpError {
       case 1205: // Lock wait timeout
       case 3024: // Query execution interrupted (max_execution_time)
         return createMcpError(
-          MysqlErrorCode.QueryTimeout,
+          MysqlErrorCode.ApiUnavailable,
           `Query timeout: ${error.message}`
         );
       default:

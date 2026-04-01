@@ -209,6 +209,9 @@ MYSQL_QUERY_TIMEOUT=30000      # Default query timeout in ms
 | `npm run lint` | Check code standards |
 | `npm run type-check` | TypeScript type checking |
 
+Version source:
+- `src/utils/version.ts` reads the package version at runtime so the MCP server reports the same version as `package.json`.
+
 ---
 
 ## Project Structure
