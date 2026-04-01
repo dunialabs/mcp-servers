@@ -10,6 +10,7 @@ Convert REST APIs to MCP tools through simple JSON configuration.
 - **Response Transformation**: JSONPath extraction and template formatting
 - **Security First**: HTTPS-only, configurable limits, automatic log sanitization
 - **STDIO Transport**: Compatible with PETA Core and Claude Desktop
+- **Tool Result Errors**: Failures are returned as `isError: true` tool results
 
 ## 📦 Installation
 
@@ -266,6 +267,21 @@ cp .env.test .env
 ./start-claude.sh
 ```
 
+## Error Strategy
+
+`mcp-rest-gateway` intentionally returns tool-result errors:
+
+```json
+{
+  "content": [{ "type": "text", "text": "Error: ..." }],
+  "isError": true
+}
+```
+
+This gateway is configuration-driven and primarily needs to present HTTP/configuration failures
+to the user. It does not currently use repository-standard classified `McpError` codes such as
+`-32030 ~ -32035`.
+
 ## 🧰 OpenAPI Draft Generator (Experimental)
 
 Use the bundled CLI to convert an OpenAPI/Swagger document into a Gateway draft:
@@ -374,6 +390,12 @@ npm run dev
 # Clean build artifacts
 npm run clean
 ```
+
+## Test Status
+
+- `npm test` currently reports that no automated tests are implemented yet
+- `test:run` / `test:coverage` remain placeholders until real Vitest coverage is added
+- Treat this project as requiring manual smoke tests after configuration changes
 
 ## 📚 Technology Stack
 

@@ -12,7 +12,7 @@
     "dev": "tsx watch src/stdio.ts",
     "start": "node dist/stdio.js",
     "clean": "rm -rf dist",
-    "test": "echo 'No tests defined yet' && exit 0",
+    "test": "echo 'No tests implemented yet. Use npm run test:run after adding coverage.' && exit 0",
     "test:watch": "vitest watch",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
