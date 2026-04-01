@@ -33,7 +33,7 @@ PostgreSQL MCP Server for database management.
 
 ### 🔄 Future Enhancements
 
-- [x] Basic unit tests (errors, logger - 100% coverage)
+- [x] Basic unit tests (error mapping, version utilities)
 - [ ] Comprehensive unit tests (tools, database connection)
 - [ ] Integration tests
 - [x] Publish to GitHub Container Registry (GHCR)
@@ -345,7 +345,7 @@ Analyze the execution plan for this query: SELECT * FROM orders WHERE user_id = 
 
 This project uses **package.json as the single source of truth** for version numbers. All other files automatically read the version from package.json:
 
-- **src/server.ts**: Reads version at runtime using `readFileSync`
+- **src/utils/version.ts**: Reads version at runtime from `package.json`
 - **build-docker.sh**: Reads version using `node -p "require('./package.json').version"`
 - **Dockerfile**: Receives version via `--build-arg VERSION` during build
 

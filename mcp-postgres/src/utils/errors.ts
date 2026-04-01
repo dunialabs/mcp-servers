@@ -12,15 +12,18 @@
  * - InvalidParams = -32602
  * - InternalError = -32603
  *
- * For application-specific errors, use the custom range -32010 to -32099 (avoiding official codes).
+ * For application-specific errors, this repository currently standardizes on:
+ * - -32031 PermissionDenied
+ * - -32032 NotFound
+ * - -32035 ApiUnavailable
  */
 
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './logger.js';
 
 /**
- * Application-specific error codes (custom range: -32010 to -32099)
- * These extend MCP standard errors without conflicting with official codes
+ * Repository-standard application error codes used by this server.
+ * These extend the MCP standard errors with stable project-level semantics.
  */
 export enum PostgresErrorCode {
   // MCP Standard Errors (from official ErrorCode enum)
@@ -30,14 +33,10 @@ export enum PostgresErrorCode {
   InvalidParams = ErrorCode.InvalidParams, // -32602: Invalid parameters
   InternalError = ErrorCode.InternalError, // -32603: Internal error
 
-  // PostgreSQL-specific errors (avoid -32000, -32001 which are used by MCP)
-  DatabaseConnectionFailed = -32010, // Database connection failed
-  QueryExecutionFailed = -32011, // Query execution error
-  TransactionFailed = -32012, // Transaction error
-  InvalidQuery = -32013, // Invalid SQL query
-  PermissionDenied = -32014, // Operation not allowed in current mode
-  TableNotFound = -32015, // Table does not exist
-  QueryTimeout = -32016, // Query execution timeout
+  // Repository-standard application errors
+  PermissionDenied = -32031, // Operation not allowed in current mode / insufficient privileges
+  TableNotFound = -32032, // Table does not exist
+  ApiUnavailable = -32035, // Database unavailable, timeout, or connection failure
 }
 
 /**
@@ -49,7 +48,6 @@ export enum PostgresErrorCode {
  * @returns McpError instance
  */
 export function createMcpError(code: number, message: string, data?: unknown): McpError {
-  logger.error(`[McpError] Code: ${code}, Message: ${message}`, data);
   return new McpError(code, message, data);
 }
 
@@ -72,7 +70,7 @@ export function createInternalError(message: string, data?: unknown): McpError {
  */
 export function createConnectionError(message: string, data?: unknown): McpError {
   return createMcpError(
-    PostgresErrorCode.DatabaseConnectionFailed,
+    PostgresErrorCode.ApiUnavailable,
     `Database connection failed: ${message}`,
     data
   );
@@ -82,11 +80,7 @@ export function createConnectionError(message: string, data?: unknown): McpError
  * Create a query execution error
  */
 export function createQueryError(message: string, data?: unknown): McpError {
-  return createMcpError(
-    PostgresErrorCode.QueryExecutionFailed,
-    `Query execution failed: ${message}`,
-    data
-  );
+  return createMcpError(ErrorCode.InternalError, `Query execution failed: ${message}`, data);
 }
 
 /**
@@ -142,13 +136,13 @@ function isPostgresError(error: unknown): error is PostgresError {
  * @returns McpError instance
  */
 export function handleUnknownError(error: unknown, context: string): McpError {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  logger.error(`[${context}] Error:`, errorMessage);
-
   // If it's already an McpError, return it
   if (error instanceof McpError) {
     return error;
   }
+
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  logger.error(`[${context}] Error:`, errorMessage);
 
   // Check if it's a PostgreSQL error using type guard
   if (isPostgresError(error)) {
@@ -169,7 +163,7 @@ export function handleUnknownError(error: unknown, context: string): McpError {
         );
       case '57014': // query_canceled (timeout)
         return createMcpError(
-          PostgresErrorCode.QueryTimeout,
+          PostgresErrorCode.ApiUnavailable,
           `Query timeout: ${error.message}`,
           { detail: error.detail }
         );

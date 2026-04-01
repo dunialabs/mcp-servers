@@ -46,13 +46,6 @@ describe('Error Utilities', () => {
       expect(JSON.stringify(error)).toContain('schema');
     });
 
-    it('should call logger.error', () => {
-      createMcpError(-32602, 'Test error');
-      expect(logger.error).toHaveBeenCalledWith(
-        '[McpError] Code: -32602, Message: Test error',
-        undefined
-      );
-    });
   });
 
   describe('createInvalidParamsError', () => {
@@ -88,7 +81,7 @@ describe('Error Utilities', () => {
       const error = createConnectionError('Connection timeout');
 
       expect(error).toBeInstanceOf(McpError);
-      expect(error.code).toBe(PostgresErrorCode.DatabaseConnectionFailed); // -32010
+      expect(error.code).toBe(PostgresErrorCode.ApiUnavailable);
       expect(error.message).toContain('Database connection failed');
       expect(error.message).toContain('Connection timeout');
     });
@@ -99,7 +92,7 @@ describe('Error Utilities', () => {
       const error = createQueryError('Syntax error in SQL');
 
       expect(error).toBeInstanceOf(McpError);
-      expect(error.code).toBe(PostgresErrorCode.QueryExecutionFailed); // -32011
+      expect(error.code).toBe(ErrorCode.InternalError);
       expect(error.message).toContain('Query execution failed');
       expect(error.message).toContain('Syntax error in SQL');
     });
@@ -108,7 +101,7 @@ describe('Error Utilities', () => {
       const data = { query: 'SELECT * FROM invalid' };
       const error = createQueryError('Table not found', data);
 
-      expect(error.code).toBe(PostgresErrorCode.QueryExecutionFailed);
+      expect(error.code).toBe(ErrorCode.InternalError);
       expect(error.message).toContain('Table not found');
     });
   });
@@ -190,7 +183,7 @@ describe('Error Utilities', () => {
       const result = handleUnknownError(pgError, 'query context');
 
       expect(result).toBeInstanceOf(McpError);
-      expect(result.code).toBe(PostgresErrorCode.QueryTimeout);
+      expect(result.code).toBe(PostgresErrorCode.ApiUnavailable);
       expect(result.message).toContain('Query timeout');
     });
 
@@ -204,7 +197,7 @@ describe('Error Utilities', () => {
       const result = handleUnknownError(pgError, 'insert context');
 
       expect(result).toBeInstanceOf(McpError);
-      expect(result.code).toBe(PostgresErrorCode.QueryExecutionFailed);
+      expect(result.code).toBe(ErrorCode.InternalError);
       expect(result.message).toContain('Unique constraint violation');
     });
 
@@ -218,7 +211,7 @@ describe('Error Utilities', () => {
       const result = handleUnknownError(pgError, 'insert context');
 
       expect(result).toBeInstanceOf(McpError);
-      expect(result.code).toBe(PostgresErrorCode.QueryExecutionFailed);
+      expect(result.code).toBe(ErrorCode.InternalError);
       expect(result.message).toContain('Foreign key constraint violation');
     });
 
@@ -232,7 +225,7 @@ describe('Error Utilities', () => {
       const result = handleUnknownError(pgError, 'insert context');
 
       expect(result).toBeInstanceOf(McpError);
-      expect(result.code).toBe(PostgresErrorCode.QueryExecutionFailed);
+      expect(result.code).toBe(ErrorCode.InternalError);
       expect(result.message).toContain('Not null constraint violation');
     });
 
@@ -246,7 +239,7 @@ describe('Error Utilities', () => {
       const result = handleUnknownError(pgError, 'query context');
 
       expect(result).toBeInstanceOf(McpError);
-      expect(result.code).toBe(PostgresErrorCode.QueryExecutionFailed);
+      expect(result.code).toBe(ErrorCode.InternalError);
       expect(result.message).toContain('Unknown database error');
     });
 
@@ -267,14 +260,10 @@ describe('Error Utilities', () => {
       expect(PostgresErrorCode.InternalError).toBe(ErrorCode.InternalError);
     });
 
-    it('should have correct custom error codes in -32010 to -32099 range', () => {
-      expect(PostgresErrorCode.DatabaseConnectionFailed).toBe(-32010);
-      expect(PostgresErrorCode.QueryExecutionFailed).toBe(-32011);
-      expect(PostgresErrorCode.TransactionFailed).toBe(-32012);
-      expect(PostgresErrorCode.InvalidQuery).toBe(-32013);
-      expect(PostgresErrorCode.PermissionDenied).toBe(-32014);
-      expect(PostgresErrorCode.TableNotFound).toBe(-32015);
-      expect(PostgresErrorCode.QueryTimeout).toBe(-32016);
+    it('should have repository-standard custom error codes', () => {
+      expect(PostgresErrorCode.PermissionDenied).toBe(-32031);
+      expect(PostgresErrorCode.TableNotFound).toBe(-32032);
+      expect(PostgresErrorCode.ApiUnavailable).toBe(-32035);
     });
   });
 });
