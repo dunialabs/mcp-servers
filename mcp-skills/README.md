@@ -387,6 +387,11 @@ npm run lint
 npm run format
 ```
 
+## Versioning
+
+The server version is read from `package.json` at runtime. Update the package version before
+publishing so server metadata and release artifacts stay aligned.
+
 ## Docker Development
 
 ```bash

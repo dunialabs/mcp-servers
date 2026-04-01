@@ -6,6 +6,7 @@
 
 import { SkillsMCPServer } from './server.js';
 import { logger } from './utils/logger.js';
+import { getServerVersion } from './utils/version.js';
 
 async function main() {
   try {
@@ -18,7 +19,7 @@ async function main() {
     // Create and initialize server
     const server = new SkillsMCPServer({
       name: 'mcp-skills',
-      version: '1.0.0',
+      version: getServerVersion(),
       skillsDir,
     });
 
