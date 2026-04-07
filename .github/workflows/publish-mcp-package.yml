@@ -19,7 +19,7 @@ jobs:
     steps:
       # Step 1: Checkout repository code
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Step 2: Extract project name and version from git tag
       - name: Extract metadata from tag
