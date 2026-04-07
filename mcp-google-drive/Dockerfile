@@ -1,5 +1,5 @@
 # ghcr.io/dunialabs/mcp-servers/google-drive - Docker image for STDIO mode
-FROM node:18-alpine
+FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/google-drive"
 LABEL org.opencontainers.image.description="Google Drive MCP Server for PETA ecosystem"

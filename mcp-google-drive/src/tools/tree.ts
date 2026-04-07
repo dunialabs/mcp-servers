@@ -157,6 +157,18 @@ function formatTree(node: TreeNode, prefix: string = '', isLast: boolean = true)
   return lines.join('\n');
 }
 
+function collectTreeLinks(node: TreeNode, links: string[] = []): string[] {
+  if (node.webViewLink) {
+    links.push(`${node.isFolder ? '📁' : '📄'} ${node.name}: ${node.webViewLink}`);
+  }
+
+  if (node.children && node.children.length > 0) {
+    node.children.forEach((child) => collectTreeLinks(child, links));
+  }
+
+  return links;
+}
+
 /**
  * Tool: Get File Tree
  */
@@ -193,16 +205,22 @@ export async function getFileTree(params: GetTreeParams) {
     logger.debug(`[Tree] Tree built successfully`);
 
     // Format output
+    const payload = {
+      kind: 'drive-tree',
+      folderId: rootNode.id,
+      maxDepth,
+      root: rootNode,
+    };
+
     if (format === 'json') {
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({
-              folder: rootNode,
-            }, null, 2),
+            text: JSON.stringify(payload, null, 2),
           },
         ],
+        structuredContent: payload,
       };
     } else {
       // Format as text tree
@@ -212,9 +230,10 @@ export async function getFileTree(params: GetTreeParams) {
         content: [
           {
             type: 'text' as const,
-            text: `File Tree: ${rootNode.name}\n\n${treeText}\n\n---\n\nTotal files/folders shown. Use maxDepth to see more levels.\nUse format="json" to get structured data with IDs and resource URIs.`,
+            text: `File Tree: ${rootNode.name}\n\n${treeText}\n\n---\n\nDrive links:\n${collectTreeLinks(rootNode).join('\n') || 'No Drive links available.'}\n\n---\n\nTotal files/folders shown. Use maxDepth to see more levels.\nUse format="json" to get structured data with resource URIs.`,
           },
         ],
+        structuredContent: payload,
       };
     }
   } catch (error: any) {

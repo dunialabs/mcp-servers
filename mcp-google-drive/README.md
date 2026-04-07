@@ -1,6 +1,6 @@
 # Google Drive MCP Server
 
-Model Context Protocol (MCP) server for Google Drive integration. Built for PETA Desk integration with STDIO transport.
+Model Context Protocol (MCP) server for Google Drive integration. Built for PETA Desk integration with STDIO transport and MCP Apps-enhanced Drive views.
 
 > **Version 1.1.2 - New Feature**: Added intelligent file change monitoring with adaptive polling intervals. **Enabled by default** for automatic resource list synchronization.
 
@@ -34,6 +34,12 @@ Model Context Protocol (MCP) server for Google Drive integration. Built for PETA
   - `gdriveGetRevision` - Get details of a specific file revision
   - `gdriveUpdateRevision` - Mark revisions as "keep forever" or update properties
   - `gdriveDeleteRevision` - Delete a file revision (if not marked as "keep forever")
+
+- **MCP Apps-enhanced tools**:
+  - `gdriveSearch` - interactive file browser for list/search/folder-style results
+  - `gdriveGetTree` - interactive folder tree view
+  - `gdriveGetFileMetadata` - interactive metadata detail view
+  - Non-App clients still receive the original text/JSON fallback
 
 - **Resource URI Support**: Read files via `gdrive:///fileId` URIs
 
@@ -157,8 +163,11 @@ No environment variables needed - monitoring starts automatically when the serve
 # Install dependencies
 npm install
 
-# Build TypeScript
+# Build server and MCP Apps resources
 npm run build
+
+# Build only MCP Apps resources
+npm run build:app
 
 # Development mode with auto-reload
 npm run dev
@@ -169,6 +178,12 @@ npm test
 # Lint code
 npm run lint
 ```
+
+`npm run build` now does two things:
+- compiles the server TypeScript with `tsc`
+- builds the MCP Apps HTML resources into `dist/ui/ui/` with `npm run build:app`
+
+If the App resources are missing, the server will return an error telling you to run `npm run build:app` or `npm run build` first.
 
 ## Security Features
 

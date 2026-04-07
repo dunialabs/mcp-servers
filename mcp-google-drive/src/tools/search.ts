@@ -17,6 +17,124 @@ function formatFileSize(bytes: number): string {
   return formatBytes(bytes);
 }
 
+type SearchFileItem = {
+  id: string | null | undefined;
+  name: string | null | undefined;
+  mimeType: string | null | undefined;
+  size: string;
+  modifiedTime: string | null | undefined;
+  owners: string | undefined;
+  webViewLink: string | null | undefined;
+  iconLink: string | null | undefined;
+  starred: boolean | null | undefined;
+  shared: boolean | null | undefined;
+  resourceUri: string;
+  isFolder: boolean;
+  kind: 'folder' | 'file';
+};
+
+function mapSearchFile(file: {
+  id?: string | null;
+  name?: string | null;
+  mimeType?: string | null;
+  size?: string | null;
+  modifiedTime?: string | null;
+  owners?: { displayName?: string | null; emailAddress?: string | null }[] | null;
+  webViewLink?: string | null;
+  iconLink?: string | null;
+  starred?: boolean | null;
+  shared?: boolean | null;
+}): SearchFileItem {
+  const isFolder = file.mimeType === 'application/vnd.google-apps.folder';
+
+  return {
+    id: file.id,
+    name: file.name,
+    mimeType: file.mimeType,
+    size: file.size ? formatFileSize(parseInt(file.size, 10)) : 'N/A',
+    modifiedTime: file.modifiedTime,
+    owners: file.owners?.map((owner) => owner.displayName || owner.emailAddress).filter(Boolean).join(', '),
+    webViewLink: file.webViewLink,
+    iconLink: file.iconLink,
+    starred: file.starred,
+    shared: file.shared,
+    resourceUri: `gdrive:///${file.id}`,
+    isFolder,
+    kind: isFolder ? 'folder' : 'file',
+  };
+}
+
+function fileTypeLabel(mimeType?: string | null): string {
+  if (!mimeType) return 'Unknown';
+  if (mimeType === 'application/vnd.google-apps.folder') return 'Folder';
+  if (mimeType.startsWith('application/vnd.google-apps')) {
+    return mimeType.replace('application/vnd.google-apps.', '').replaceAll('-', ' ');
+  }
+  const slashIndex = mimeType.indexOf('/');
+  return slashIndex > 0 ? mimeType.slice(slashIndex + 1) : mimeType;
+}
+
+function formatSearchFallback(payload: {
+  mode: 'files' | 'search' | 'folder';
+  query: string | null;
+  folderId: string | null;
+  totalResults: number;
+  files: SearchFileItem[];
+}): string {
+  const heading = payload.mode === 'folder'
+    ? `Folder contents${payload.folderId ? ` for ${payload.folderId}` : ''}`
+    : payload.mode === 'search'
+      ? `Search results${payload.query ? ` for "${payload.query}"` : ''}`
+      : 'Drive files';
+
+  const lines = [`${heading} (${payload.totalResults})`, ''];
+
+  if (payload.files.length === 0) {
+    lines.push('No files matched the current filters.');
+    return lines.join('\n');
+  }
+
+  payload.files.forEach((file, index) => {
+    lines.push(`${index + 1}. ${file.isFolder ? '📁' : '📄'} ${file.name || 'Untitled'}`);
+    lines.push(`   Type: ${fileTypeLabel(file.mimeType)}`);
+    lines.push(`   Size: ${file.size || 'N/A'}`);
+    if (file.modifiedTime) lines.push(`   Updated: ${file.modifiedTime}`);
+    if (file.owners) lines.push(`   Owner: ${file.owners}`);
+    if (file.webViewLink) lines.push(`   Open in Drive: ${file.webViewLink}`);
+    if (file.resourceUri) lines.push(`   Resource URI: ${file.resourceUri}`);
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+}
+
+function formatMetadataFallback(metadata: {
+  name?: string | null;
+  mimeType?: string | null;
+  size?: string;
+  modifiedTime?: string | null;
+  createdTime?: string | null;
+  owners?: { displayName?: string | null; emailAddress?: string | null }[] | null;
+  webViewLink?: string | null;
+  resourceUri?: string;
+  isFolder?: boolean;
+}): string {
+  const ownerNames = metadata.owners?.map((owner) => owner.displayName || owner.emailAddress).filter(Boolean).join(', ');
+  const lines = [
+    `${metadata.isFolder ? '📁' : '📄'} ${metadata.name || 'Untitled'}`,
+    `Type: ${fileTypeLabel(metadata.mimeType)}`,
+    `Size: ${metadata.size || 'N/A'}`,
+  ];
+
+  if (metadata.modifiedTime) lines.push(`Updated: ${metadata.modifiedTime}`);
+  if (metadata.createdTime) lines.push(`Created: ${metadata.createdTime}`);
+  if (ownerNames) lines.push(`Owner: ${ownerNames}`);
+  if (metadata.webViewLink) lines.push(`Open in Drive: ${metadata.webViewLink}`);
+  if (metadata.resourceUri) lines.push(`Resource URI: ${metadata.resourceUri}`);
+
+  return lines.join('\n');
+}
+
 /**
  * Tool 1: Advanced Search
  */
@@ -52,29 +170,49 @@ export async function searchFiles(params: SearchParams) {
 
     logger.debug(`[Search] Found ${files.length} files`);
 
+    const mappedFiles = files.map(mapSearchFile);
+    const payload: {
+      kind: 'drive-browser';
+      mode: 'files' | 'search' | 'folder';
+      query: string | null;
+      totalResults: number;
+      folderId: string | null;
+      filters: {
+        fileTypes: string[];
+        modifiedAfter: string | null;
+        owner: string | null;
+        sharedWithMe: boolean;
+        starred: boolean;
+        trashed: boolean;
+        limit: number;
+      };
+      files: SearchFileItem[];
+    } = {
+      kind: 'drive-browser',
+      mode: params.inFolder ? 'folder' : params.query ? 'search' : 'files',
+      query: params.query || null,
+      totalResults: mappedFiles.length,
+      folderId: params.inFolder || null,
+      filters: {
+        fileTypes: params.fileTypes || [],
+        modifiedAfter: params.modifiedAfter || null,
+        owner: params.owner || null,
+        sharedWithMe: params.sharedWithMe || false,
+        starred: params.starred || false,
+        trashed: params.trashed || false,
+        limit,
+      },
+      files: mappedFiles,
+    };
+
     return {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify({
-            query: params.query || 'all files',
-            totalResults: files.length,
-            files: files.map(file => ({
-              id: file.id,
-              name: file.name,
-              mimeType: file.mimeType,
-              size: file.size ? formatFileSize(parseInt(file.size)) : 'N/A',
-              modifiedTime: file.modifiedTime,
-              owners: file.owners?.map(o => o.displayName || o.emailAddress).join(', '),
-              webViewLink: file.webViewLink,
-              iconLink: file.iconLink,
-              starred: file.starred,
-              shared: file.shared,
-              resourceUri: `gdrive:///${file.id}`,
-            })),
-          }, null, 2),
+          text: formatSearchFallback(payload),
         },
       ],
+      structuredContent: payload,
     };
   } catch (error: any) {
     throw handleGoogleDriveError(error, 'Failed to search files');
@@ -492,13 +630,19 @@ export async function getFileMetadata(params: GetFileMetadataParams) {
       metadata.appProperties = file.appProperties || {};
     }
 
+    const payload = {
+      kind: 'drive-metadata',
+      file: metadata,
+    };
+
     return {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(metadata, null, 2),
+          text: formatMetadataFallback(metadata),
         },
       ],
+      structuredContent: payload,
     };
   } catch (error: any) {
     throw handleGoogleDriveError(error, 'Failed to get file metadata');

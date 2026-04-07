@@ -4,6 +4,7 @@
  */
 
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { searchFiles, searchAndRetrieve, getFileMetadata } from './tools/search.js';
 import { getFileTree } from './tools/tree.js';
@@ -18,6 +19,10 @@ import { logger } from './utils/logger.js';
 import { ChangeMonitor, ChangeEvent } from './monitoring/ChangeMonitor.js';
 import { getServerVersion } from './utils/version.js';
 import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
+import { readAppHtml } from './utils/app-resource.js';
+
+const DRIVE_BROWSER_VIEW_URI = 'ui://google-drive/browser-view.html';
+const DRIVE_METADATA_VIEW_URI = 'ui://google-drive/metadata-view.html';
 
 /**
  * Tool schemas using Zod
@@ -291,16 +296,41 @@ export class GoogleDriveMcpServer {
     // Register tools in order of usage frequency (most used first)
 
     // Tool 1: Search (Most commonly used)
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gdriveSearch',
       {
         title: 'GDrive - Search Files',
         description: 'Search for files in Google Drive with advanced filters. Supports full-text search, file type filtering, date ranges, and more.',
         inputSchema: SearchParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: DRIVE_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
         return await searchFiles(params);
       }
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Drive Browser View',
+      DRIVE_BROWSER_VIEW_URI,
+      {
+        title: 'Google Drive Browser View',
+        description: 'Interactive list and folder browser for Google Drive search results.',
+      },
+      async () => ({
+        contents: [
+          {
+            uri: DRIVE_BROWSER_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('drive-browser-view.html'),
+          },
+        ],
+      })
     );
 
     // Tool 2: Search and Retrieve
@@ -317,12 +347,18 @@ export class GoogleDriveMcpServer {
     );
 
     // Tool 3: Get File Tree
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gdriveGetTree',
       {
         title: 'GDrive - Get Folder Tree',
         description: 'Get the file hierarchy (tree structure) from a folder. Returns folder structure with files and subfolders.',
         inputSchema: GetTreeParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: DRIVE_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
         return await getFileTree(params);
@@ -330,16 +366,41 @@ export class GoogleDriveMcpServer {
     );
 
     // Tool 4: Get File Metadata
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gdriveGetFileMetadata',
       {
         title: 'GDrive - Get File Metadata',
         description: 'Get complete metadata for a specific file, including permissions, timestamps, owners, capabilities, and more.',
         inputSchema: GetFileMetadataParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: DRIVE_METADATA_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
         return await getFileMetadata(params);
       }
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Drive Metadata View',
+      DRIVE_METADATA_VIEW_URI,
+      {
+        title: 'Google Drive Metadata View',
+        description: 'Interactive metadata view for a Google Drive file or folder.',
+      },
+      async () => ({
+        contents: [
+          {
+            uri: DRIVE_METADATA_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('drive-metadata-view.html'),
+          },
+        ],
+      })
     );
 
     // Tool 5: Create File
@@ -637,7 +698,7 @@ export class GoogleDriveMcpServer {
       }
     );
 
-    logger.info('[Server] Registered 25 tools and 1 resource handler');
+    logger.info('[Server] Registered 25 tools, 1 file resource handler, and 2 MCP App resources');
 
     // Initialize Change Monitor
     this.initializeChangeMonitor();
