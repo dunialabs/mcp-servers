@@ -1,29 +1,68 @@
 {
-  "name": "peta-mcp-servers",
-  "version": "1.0.0",
-  "description": "A collection of Model Context Protocol (MCP) servers",
-  "private": true,
-  "scripts": {
-    "install:all": "npm --prefix mcp-server-template install && npm --prefix mcp-google-drive install && npm --prefix mcp-postgres install && npm --prefix mcp-notion install && npm --prefix mcp-google-calendar install && npm --prefix mcp-figma install && npm --prefix mcp-rest-gateway install",
-    "build:all": "npm --prefix mcp-server-template run build && npm --prefix mcp-google-drive run build && npm --prefix mcp-postgres run build && npm --prefix mcp-notion run build && npm --prefix mcp-google-calendar run build && npm --prefix mcp-figma run build && npm --prefix mcp-rest-gateway run build",
-    "test:all": "npm --prefix mcp-server-template run --if-present test && npm --prefix mcp-google-drive run --if-present test && npm --prefix mcp-postgres run --if-present test && npm --prefix mcp-notion run --if-present test && npm --prefix mcp-google-calendar run --if-present test && npm --prefix mcp-figma run --if-present test && npm --prefix mcp-rest-gateway run --if-present test",
-    "clean": "npm --prefix mcp-server-template run clean && npm --prefix mcp-google-drive run clean && npm --prefix mcp-postgres run clean && npm --prefix mcp-notion run clean && npm --prefix mcp-google-calendar run clean && npm --prefix mcp-figma run clean && npm --prefix mcp-rest-gateway run clean"
+  "name": "@petaio/mcp-google-drive",
+  "version": "1.1.5",
+  "description": "Google Drive MCP Server for PETA ecosystem with STDIO transport. Provides 25 powerful tools for file operations, permissions, batch processing, and intelligent change monitoring.",
+  "main": "dist/stdio.js",
+  "type": "module",
+  "bin": {
+    "peta-mcp-google-drive": "./dist/stdio.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dunialabs/mcp-servers.git"
+  "scripts": {
+    "build": "tsc && npm run build:app",
+    "build:app": "node ./scripts/build-apps.mjs",
+    "dev": "tsx watch src/stdio.ts",
+    "start": "node dist/stdio.js",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "test:watch": "vitest watch",
+    "lint": "eslint src ui scripts --ext .ts,.mjs",
+    "lint:fix": "eslint src ui scripts --ext .ts,.mjs --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit",
+    "prepare": "npm run build",
+    "docker:build": "./build-docker.sh"
   },
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "ai",
+    "google-drive",
+    "google",
+    "drive",
+    "peta",
+    "peta-desk",
+    "stdio",
+    "file-management",
+    "cloud-storage",
+    "oauth2",
+    "docker",
+    "typescript",
     "claude",
-    "servers",
-    "integrations"
+    "ai"
   ],
   "author": "PETA Team",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.2.2",
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "dotenv": "^16.4.5",
+    "googleapis": "^140.0.0",
+    "https-proxy-agent": "^7.0.6",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "tsx": "^4.7.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.1",
+    "vite-plugin-singlefile": "^2.3.2",
+    "vitest": "^4.0.5"
+  },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=20.0.0"
   }
 }
