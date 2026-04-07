@@ -352,15 +352,15 @@ function shell(title: string, subtitle: string, body: string, options?: { compac
       }
       .tree-caret {
         flex: 0 0 auto;
-        width: 10px;
+        width: 16px;
         color: #667085;
-        font-size: 11px;
+        font-size: 16px;
         line-height: 1;
         transform: translateY(1px);
       }
       .tree-placeholder {
         flex: 0 0 auto;
-        width: 10px;
+        width: 16px;
       }
       .tree-icon {
         flex: 0 0 auto;
