@@ -13,7 +13,6 @@ export enum SheetsErrorCode {
 }
 
 export function createMcpError(code: number, message: string, data?: unknown): McpError {
-  logger.error(`[McpError] code=${code} message=${message}`, data);
   return new McpError(code, message, data);
 }
 
@@ -32,10 +31,16 @@ function asApiErrorShape(error: unknown): ApiErrorShape {
 }
 
 export function handleSheetsApiError(error: unknown, context: string): McpError {
+  if (error instanceof McpError) {
+    return error;
+  }
+
   const parsed = asApiErrorShape(error);
   const status = parsed.response?.status ?? parsed.code;
   const message = parsed.message || 'Unknown Google Sheets API error';
   const details = parsed.response?.data || parsed.errors;
+
+  logger.error(`[SheetsAPI] ${context}`, { status, message, details });
 
   if (status === 401) {
     return createMcpError(

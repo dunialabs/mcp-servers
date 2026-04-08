@@ -12,7 +12,7 @@ export function getCurrentToken(): string {
     throw new TokenValidationError('accessToken environment variable not set');
   }
 
-  const token = rawToken.startsWith('Bearer ') ? rawToken.slice(7).trim() : rawToken.trim();
+  const token = rawToken.trim().replace(/^Bearer\s+/i, '').trim();
 
   if (!validateTokenFormat(token)) {
     throw new TokenValidationError('Invalid accessToken format');

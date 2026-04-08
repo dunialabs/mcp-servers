@@ -123,6 +123,10 @@ export async function gsheetsReadValues(params: ReadValuesParams) {
     'gsheetsReadValues'
   );
 
+  const values = response.data.values ?? [];
+  const rowCount = values.length;
+  const columnCount = values.reduce((max, row) => Math.max(max, row.length), 0);
+
   return {
     content: [
       {
@@ -132,13 +136,22 @@ export async function gsheetsReadValues(params: ReadValuesParams) {
             spreadsheetId: params.spreadsheetId,
             range: response.data.range,
             majorDimension: response.data.majorDimension,
-            values: response.data.values ?? [],
+            values,
           },
           null,
           2
         ),
       },
     ],
+    structuredContent: {
+      kind: 'gsheets-range',
+      spreadsheetId: params.spreadsheetId,
+      range: response.data.range ?? params.range,
+      majorDimension: response.data.majorDimension ?? params.majorDimension ?? 'ROWS',
+      rowCount,
+      columnCount,
+      values,
+    },
   };
 }
 

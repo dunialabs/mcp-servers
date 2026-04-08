@@ -23,6 +23,7 @@ export async function withSheetsRetry<T>(fn: () => Promise<T>, context: string, 
       lastError = error;
 
       if (error instanceof TokenValidationError) {
+        logger.error(`[SheetsAPI] ${context} token validation failed`, { reason: error.message });
         throw createMcpError(
           SheetsErrorCode.AuthenticationFailed,
           'Authentication failed or token expired. Reconnect Google integration.',

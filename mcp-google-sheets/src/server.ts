@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { readFileSync } from 'fs';
 import path from 'path';
@@ -34,6 +35,7 @@ import {
 } from './tools/sheets.js';
 import { validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 function getServerVersion(): string {
   try {
@@ -47,6 +49,10 @@ function getServerVersion(): string {
     return '0.0.0';
   }
 }
+
+const SHEETS_BROWSER_VIEW_URI = 'ui://google-sheets/browser-view.html';
+const SHEETS_METADATA_VIEW_URI = 'ui://google-sheets/metadata-view.html';
+const SHEETS_RANGE_VIEW_URI = 'ui://google-sheets/range-view.html';
 
 export class GoogleSheetsMcpServer {
   private server: McpServer;
@@ -89,33 +95,94 @@ export class GoogleSheetsMcpServer {
         return;
       }
 
-      process.env.accessToken = newToken.startsWith('Bearer ')
-        ? newToken.slice(7).trim()
-        : newToken.trim();
+      process.env.accessToken = newToken.trim().replace(/^Bearer\s+/i, '').trim();
       logger.info('[Token] accessToken updated via notification');
     });
 
+    this.registerAppResources();
     this.registerTools();
     logger.info('[Server] Google Sheets MCP Server initialized');
   }
 
+  private registerAppResources() {
+    registerAppResource(
+      this.server,
+      'Google Sheets Browser View',
+      SHEETS_BROWSER_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: SHEETS_BROWSER_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('sheets-browser-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Sheets Metadata View',
+      SHEETS_METADATA_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: SHEETS_METADATA_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('sheets-metadata-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Sheets Range View',
+      SHEETS_RANGE_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: SHEETS_RANGE_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('sheets-range-view.html'),
+          },
+        ],
+      })
+    );
+  }
+
   private registerTools() {
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gsheetsListSpreadsheets',
       {
         title: 'GSheets - List Spreadsheets',
         description: 'List accessible Google Sheets files and return spreadsheet IDs.',
         inputSchema: ListSpreadsheetsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: SHEETS_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params) => gsheetsListSpreadsheets(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gsheetsGetSpreadsheet',
       {
         title: 'GSheets - Get Spreadsheet',
         description: 'Get spreadsheet metadata and sheet list by spreadsheet ID.',
         inputSchema: GetSpreadsheetInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: SHEETS_METADATA_VIEW_URI,
+          },
+        },
       },
       async (params) => gsheetsGetSpreadsheet(params)
     );
@@ -130,12 +197,18 @@ export class GoogleSheetsMcpServer {
       async (params) => gsheetsCreateSpreadsheet(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gsheetsReadValues',
       {
         title: 'GSheets - Read Values',
         description: 'Read values from one range in A1 notation.',
         inputSchema: ReadValuesInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: SHEETS_RANGE_VIEW_URI,
+          },
+        },
       },
       async (params) => gsheetsReadValues(params)
     );
@@ -210,7 +283,7 @@ export class GoogleSheetsMcpServer {
       async (params) => gsheetsDuplicateSheet(params)
     );
 
-    logger.info('[Server] Registered 11 Google Sheets tools');
+    logger.info('[Server] Registered 11 Google Sheets tools and 3 MCP App resources');
   }
 
   async connect(transport: Transport) {

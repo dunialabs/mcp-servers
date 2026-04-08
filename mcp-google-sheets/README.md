@@ -2,6 +2,22 @@
 
 Google Sheets MCP server for PETA ecosystem with STDIO transport.
 
+## MCP Apps
+
+This server now enhances these existing tools with MCP Apps views:
+
+1. `gsheetsListSpreadsheets`
+2. `gsheetsGetSpreadsheet`
+3. `gsheetsReadValues`
+
+Clients that support MCP Apps render:
+
+- spreadsheet browser list
+- spreadsheet metadata and sheet tabs
+- range table preview
+
+Clients that do not support MCP Apps continue to receive the original text / JSON fallback output.
+
 ## Tools
 
 1. `gsheetsGetSpreadsheet`
@@ -147,8 +163,15 @@ PetaConsole / Core will automatically:
 ## Docker
 
 ```bash
+npm run build
 ./build-docker.sh
 ```
+
+## Build Notes
+
+- `npm run build` now compiles the server and MCP Apps resources
+- `npm run build:app` only rebuilds the MCP Apps HTML resources
+- if a view resource is missing at runtime, run `npm run build` again
 
 ## Tool Notes
 

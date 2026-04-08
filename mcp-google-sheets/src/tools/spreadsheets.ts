@@ -62,13 +62,19 @@ export async function gsheetsGetSpreadsheet(params: GetSpreadsheetParams) {
     'gsheetsGetSpreadsheet'
   );
 
+  const summary = summarizeSpreadsheet(response.data);
+
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify(summarizeSpreadsheet(response.data), null, 2),
+        text: JSON.stringify(summary, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'gsheets-spreadsheet-metadata',
+      spreadsheet: summary,
+    },
   };
 }
 
@@ -131,6 +137,16 @@ export async function gsheetsListSpreadsheets(params: ListSpreadsheetsParams) {
   );
 
   const files = response.data.files ?? [];
+  const spreadsheets = files.map((file) => ({
+    spreadsheetId: file.id,
+    title: file.name,
+    spreadsheetUrl: file.webViewLink,
+    modifiedTime: file.modifiedTime,
+    owners: (file.owners ?? []).map((owner) => ({
+      displayName: owner.displayName,
+      emailAddress: owner.emailAddress,
+    })),
+  }));
 
   return {
     content: [
@@ -140,21 +156,20 @@ export async function gsheetsListSpreadsheets(params: ListSpreadsheetsParams) {
           {
             count: files.length,
             nextPageToken: response.data.nextPageToken,
-            spreadsheets: files.map((file) => ({
-              spreadsheetId: file.id,
-              title: file.name,
-              spreadsheetUrl: file.webViewLink,
-              modifiedTime: file.modifiedTime,
-              owners: (file.owners ?? []).map((owner) => ({
-                displayName: owner.displayName,
-                emailAddress: owner.emailAddress,
-              })),
-            })),
+            spreadsheets,
           },
           null,
           2
         ),
       },
     ],
+    structuredContent: {
+      kind: 'gsheets-spreadsheet-browser',
+      query: params.query?.trim() || null,
+      pageSize: params.pageSize ?? 20,
+      totalResults: files.length,
+      nextPageToken: response.data.nextPageToken ?? null,
+      spreadsheets,
+    },
   };
 }
