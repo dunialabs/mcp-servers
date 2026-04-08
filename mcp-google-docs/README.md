@@ -127,6 +127,23 @@ docker run -i --rm \
   ghcr.io/dunialabs/mcp-servers/google-docs:latest
 ```
 
+## MCP Apps
+
+The following existing read tools are enhanced with MCP Apps views in supported clients:
+
+- `gdocsListDocuments`
+- `gdocsSearchDocuments`
+- `gdocsReadDocument`
+
+Unsupported clients continue to receive the original text/JSON fallback.
+
+`npm run build` now performs both the TypeScript build and `build:app`, which generates the
+HTML resources used by the MCP Apps views. If you only change the UI resources, you can run:
+
+```bash
+npm run build:app
+```
+
 ## Development
 
 ```bash

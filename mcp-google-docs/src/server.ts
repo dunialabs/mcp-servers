@@ -6,11 +6,13 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { logger } from './utils/logger.js';
 import { handleGoogleDocsError } from './utils/errors.js';
 import type { ServerConfig } from './types/index.js';
 import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 // Import tool implementations
 import { listDocuments, searchDocuments } from './tools/list.js';
@@ -69,6 +71,9 @@ This server requires a valid Google OAuth 2.0 access token with the following sc
 
 The access token is provided via the accessToken environment variable.
 `;
+
+const DOCS_BROWSER_VIEW_URI = 'ui://google-docs/browser-view.html';
+const DOCS_READER_VIEW_URI = 'ui://google-docs/reader-view.html';
 
 export class MCPServer {
   private server: McpServer;
@@ -139,10 +144,46 @@ export class MCPServer {
 
     logger.info('[server] Token update notification handler registered');
 
+    this.registerAppResources();
+
     // Register tools
     this.setupTools();
 
     logger.info('[server] Initialization complete');
+  }
+
+  private registerAppResources() {
+    registerAppResource(
+      this.server,
+      'Google Docs Browser View',
+      DOCS_BROWSER_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: DOCS_BROWSER_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('docs-browser-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'Google Docs Reader View',
+      DOCS_READER_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: DOCS_READER_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('docs-reader-view.html'),
+          },
+        ],
+      })
+    );
   }
 
   private setupTools() {
@@ -151,9 +192,11 @@ export class MCPServer {
     // ============================================
     // Tool 1: gdocsListDocuments
     // ============================================
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gdocsListDocuments',
       {
+        title: 'Google Docs - List Documents',
         description: `List user's Google Docs documents.
 
 Returns a list of Google Docs with their IDs, names, and metadata.
@@ -180,13 +223,32 @@ Returns:
           orderDirection: z.enum(['asc', 'desc']).optional().default('desc')
             .describe('Sort direction'),
         },
+        _meta: {
+          ui: {
+            resourceUri: DOCS_BROWSER_VIEW_URI,
+          },
+        },
       },
-      async (params) => {
+      async (params: {
+        maxResults?: number;
+        pageToken?: string;
+        orderBy?: 'modifiedTime' | 'createdTime' | 'name';
+        orderDirection?: 'asc' | 'desc';
+      }) => {
         logger.info('[tools] Executing tool: gdocsListDocuments');
         try {
           const result = await listDocuments(params);
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            structuredContent: {
+              kind: 'gdocs-browser',
+              mode: 'list',
+              query: null,
+              count: result.count,
+              hasMore: result.hasMore,
+              nextPageToken: result.nextPageToken ?? null,
+              documents: result.documents,
+            },
           };
         } catch (error) {
           throw handleGoogleDocsError(error, 'gdocsListDocuments');
@@ -197,9 +259,11 @@ Returns:
     // ============================================
     // Tool 2: gdocsSearchDocuments
     // ============================================
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gdocsSearchDocuments',
       {
+        title: 'Google Docs - Search Documents',
         description: `Search Google Docs documents by content or title.
 
 Searches the full text of documents including title and body content.
@@ -233,13 +297,35 @@ Returns:
           inFolder: z.string().optional()
             .describe('Folder ID to search within'),
         },
+        _meta: {
+          ui: {
+            resourceUri: DOCS_BROWSER_VIEW_URI,
+          },
+        },
       },
-      async (params) => {
+      async (params: {
+        query: string;
+        maxResults?: number;
+        pageToken?: string;
+        modifiedAfter?: string;
+        createdAfter?: string;
+        owner?: string;
+        inFolder?: string;
+      }) => {
         logger.info('[tools] Executing tool: gdocsSearchDocuments');
         try {
           const result = await searchDocuments(params);
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            structuredContent: {
+              kind: 'gdocs-browser',
+              mode: 'search',
+              query: params.query,
+              count: result.count,
+              hasMore: result.hasMore,
+              nextPageToken: result.nextPageToken ?? null,
+              documents: result.documents,
+            },
           };
         } catch (error) {
           throw handleGoogleDocsError(error, 'gdocsSearchDocuments');
@@ -271,7 +357,10 @@ Returns:
           content: z.string().optional().describe('Initial content (Markdown format)'),
         },
       },
-      async (params) => {
+      async (params: {
+        title: string;
+        content?: string;
+      }) => {
         logger.info('[tools] Executing tool: gdocsCreateDocument');
         try {
           const result = await createDocument(params);
@@ -287,9 +376,11 @@ Returns:
     // ============================================
     // Tool 4: gdocsReadDocument
     // ============================================
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gdocsReadDocument',
       {
+        title: 'Google Docs - Read Document',
         description: `Read the content of a Google Docs document.
 
 Retrieves the document content in the specified format.
@@ -311,6 +402,11 @@ Returns:
           format: z.enum(['markdown', 'text', 'json']).optional().default('markdown')
             .describe('Output format'),
         },
+        _meta: {
+          ui: {
+            resourceUri: DOCS_READER_VIEW_URI,
+          },
+        },
       },
       async (params) => {
         logger.info('[tools] Executing tool: gdocsReadDocument');
@@ -318,6 +414,14 @@ Returns:
           const result = await readDocument(params);
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            structuredContent: {
+              kind: 'gdocs-reader',
+              documentId: result.documentId,
+              title: result.title,
+              content: result.content,
+              format: result.format,
+              revisionId: result.revisionId ?? null,
+            },
           };
         } catch (error) {
           throw handleGoogleDocsError(error, 'gdocsReadDocument');

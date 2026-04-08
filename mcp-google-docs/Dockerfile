@@ -1,5 +1,5 @@
 # ghcr.io/dunialabs/mcp-servers/google-docs - Docker image for STDIO mode
-FROM node:18-alpine
+FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/google-docs"
 LABEL org.opencontainers.image.description="Google Docs MCP Server - Read, write, and edit Google Documents"
