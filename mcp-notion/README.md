@@ -31,6 +31,10 @@ Model Context Protocol (MCP) server for Notion integration. Built for PETA Desk 
 
 - **STDIO Transport**: Direct process communication via stdin/stdout
 - **Token Management**: Supports both Internal Integration tokens and OAuth access tokens
+- **MCP Apps Views**:
+  - `notionSearch` - Search results browser view
+  - `notionGetPage` - Page metadata view
+  - `notionQueryDatabase` - Database rows table view
 
 ## Quick Start
 
@@ -59,6 +63,19 @@ npm run build
 # Run
 export notionToken='ntn_xxx...'
 node dist/stdio.js
+```
+
+### MCP Apps Build
+
+`npm run build` now performs two steps:
+
+1. Compile the server with `tsc`
+2. Build MCP Apps HTML resources with `npm run build:app`
+
+If you only change files under `ui/`, you can rebuild just the App resources with:
+
+```bash
+npm run build:app
 ```
 
 ### For PETA Core Integration
@@ -209,7 +226,7 @@ Edit the Claude Desktop configuration file:
 - `secret_YOUR_TOKEN_HERE` with your Notion Integration Token from Step 1
 
 **Prerequisites for Option B**:
-- Node.js 18+ installed
+- Node.js 20+ installed
 - Project cloned and built (`npm install && npm run build`)
 
 ### Step 4: Restart Claude Desktop

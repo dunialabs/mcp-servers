@@ -1,5 +1,5 @@
 # ghcr.io/dunialabs/mcp-servers/notion - Docker image for STDIO mode
-FROM node:18-alpine
+FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/notion"
 LABEL org.opencontainers.image.description="Notion MCP Server for PETA ecosystem"

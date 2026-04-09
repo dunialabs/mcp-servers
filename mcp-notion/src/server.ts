@@ -4,6 +4,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { getPage, createPage, updatePage, getPageProperties } from './tools/pages.js';
 import { getDatabase, queryDatabase, createDatabase, updateDatabase } from './tools/databases.js';
@@ -13,6 +14,7 @@ import { createComment, getComments } from './tools/comments.js';
 import { logger } from './utils/logger.js';
 import { getServerVersion } from './utils/version.js';
 import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 /**
  * Tool schemas using Zod
@@ -126,6 +128,10 @@ const GetCommentsParamsSchema = {
 /**
  * Notion MCP Server
  */
+const NOTION_BROWSER_VIEW_URI = 'ui://notion/browser-view.html';
+const NOTION_PAGE_VIEW_URI = 'ui://notion/page-view.html';
+const NOTION_DATABASE_VIEW_URI = 'ui://notion/database-view.html';
+
 export class NotionMcpServer {
   private server: McpServer;
 
@@ -189,16 +195,32 @@ export class NotionMcpServer {
 
     logger.info('[Server] Token update notification handler registered');
 
+    this.registerAppResources();
+
     // Register Page Tools
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'notionGetPage',
       {
         title: 'Notion - Get Page',
         description: 'Get a Notion page by ID. Returns full page object with properties and metadata.',
         inputSchema: GetPageParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: NOTION_PAGE_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
-        return await getPage(params);
+        const result = await getPage(params);
+        const payload = parseJsonContent(result);
+        return {
+          ...result,
+          structuredContent: {
+            kind: 'notion-page',
+            page: payload,
+          },
+        };
       }
     );
 
@@ -251,15 +273,31 @@ export class NotionMcpServer {
       }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'notionQueryDatabase',
       {
         title: 'Notion - Query Database',
         description: 'Query a database with filters and sorting. Returns pages that match the criteria.',
         inputSchema: QueryDatabaseParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: NOTION_DATABASE_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
-        return await queryDatabase(params);
+        const result = await queryDatabase(params);
+        const payload = parseJsonContent(result);
+        return {
+          ...result,
+          structuredContent: {
+            kind: 'notion-database',
+            databaseId: params.databaseId,
+            pageSize: params.pageSize ?? null,
+            response: payload,
+          },
+        };
       }
     );
 
@@ -349,15 +387,32 @@ export class NotionMcpServer {
     );
 
     // Register Search Tool
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'notionSearch',
       {
         title: 'Notion - Search',
         description: 'Search across all pages and databases in the workspace. Can filter by type and sort results.',
         inputSchema: SearchParamsSchema,
+        _meta: {
+          ui: {
+            resourceUri: NOTION_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: any) => {
-        return await search(params);
+        const result = await search(params);
+        const payload = parseJsonContent(result);
+        return {
+          ...result,
+          structuredContent: {
+            kind: 'notion-browser',
+            mode: 'search',
+            query: params.query ?? null,
+            filter: params.filter ?? null,
+            response: payload,
+          },
+        };
       }
     );
 
@@ -389,11 +444,71 @@ export class NotionMcpServer {
     logger.info('[Server] All tools registered successfully');
   }
 
+  private registerAppResources() {
+    registerAppResource(
+      this.server,
+      'Notion Browser View',
+      NOTION_BROWSER_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: NOTION_BROWSER_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('notion-browser-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'Notion Page View',
+      NOTION_PAGE_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: NOTION_PAGE_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('notion-page-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'Notion Database View',
+      NOTION_DATABASE_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: NOTION_DATABASE_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('notion-database-view.html'),
+          },
+        ],
+      })
+    );
+  }
+
   /**
    * Connect to transport
    */
   async connect(transport: any) {
     await this.server.connect(transport);
     logger.info('[Server] Connected to transport');
+  }
+}
+
+function parseJsonContent(result: { content?: Array<{ type?: string; text?: string }> }) {
+  const text = result.content?.find((item) => item.type === 'text')?.text;
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }
