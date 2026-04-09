@@ -158,3 +158,16 @@ PetaConsole / Core will automatically:
 - `gmailListMessages` defaults to lightweight mode (`includeMessageDetails=false`) to avoid N+1 API calls.
 - Set `includeMessageDetails=true` only when you need per-message headers (subject/from/to/date).
 - `gmailSendMessage` supports `replyTo`, `inReplyTo`, and `references` for true reply threading behavior.
+
+## MCP Apps
+
+The following existing read tools are enhanced with MCP Apps views in supported clients:
+
+- `gmailListMessages`
+- `gmailGetMessage`
+
+Search scenarios use `gmailListMessages` with the `q` parameter rather than a separate search tool.
+Unsupported clients continue to receive the original text/JSON fallback.
+
+`npm run build` now performs both the TypeScript build and `build:app`, which generates the
+HTML resources used by the MCP Apps views.

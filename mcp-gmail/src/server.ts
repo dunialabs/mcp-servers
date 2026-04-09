@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { readFileSync } from 'fs';
 import path from 'path';
@@ -33,6 +34,7 @@ import {
 import { gmailListLabels, ListLabelsInputSchema } from './tools/labels.js';
 import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 function getServerVersion(): string {
   try {
@@ -97,30 +99,112 @@ export class GmailMcpServer {
       logger.info('[Token] accessToken updated via notification');
     });
 
+    this.registerAppResources();
     this.registerTools();
 
     logger.info('[Server] Gmail MCP Server initialized');
   }
 
+  private registerAppResources() {
+    registerAppResource(
+      this.server,
+      'Gmail Browser View',
+      'ui://gmail/browser-view.html',
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: 'ui://gmail/browser-view.html',
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('gmail-browser-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'Gmail Message View',
+      'ui://gmail/message-view.html',
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: 'ui://gmail/message-view.html',
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('gmail-message-view.html'),
+          },
+        ],
+      })
+    );
+  }
+
   private registerTools() {
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gmailListMessages',
       {
         title: 'Gmail - List Messages',
         description: 'List Gmail messages using query and label filters.',
         inputSchema: ListMessagesInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: 'ui://gmail/browser-view.html',
+          },
+        },
       },
-      async (params) => gmailListMessages(params)
+      async (params) => {
+        const result = await gmailListMessages(params);
+        const payload = JSON.parse(result.content[0]?.text ?? '{}') as {
+          maxResults?: number;
+          includeMessageDetails?: boolean;
+          resultSizeEstimate?: number;
+          nextPageToken?: string;
+          messages?: unknown[];
+        };
+
+        return {
+          ...result,
+          structuredContent: {
+            kind: 'gmail-browser',
+            mode: params.q ? 'search' : 'list',
+            query: params.q ?? null,
+            labelIds: params.labelIds ?? [],
+            maxResults: payload.maxResults ?? params.maxResults ?? 20,
+            includeMessageDetails: payload.includeMessageDetails ?? false,
+            resultSizeEstimate: payload.resultSizeEstimate ?? 0,
+            nextPageToken: payload.nextPageToken ?? null,
+            messages: payload.messages ?? [],
+          },
+        };
+      }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gmailGetMessage',
       {
         title: 'Gmail - Get Message',
         description: 'Get one Gmail message in metadata or full format.',
         inputSchema: GetMessageInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: 'ui://gmail/message-view.html',
+          },
+        },
       },
-      async (params) => gmailGetMessage(params)
+      async (params) => {
+        const result = await gmailGetMessage(params);
+        const payload = JSON.parse(result.content[0]?.text ?? '{}') as Record<string, unknown>;
+        return {
+          ...result,
+          structuredContent: {
+            kind: 'gmail-message',
+            format: params.format ?? 'metadata',
+            message: payload,
+          },
+        };
+      }
     );
 
     this.server.registerTool(
