@@ -27,12 +27,23 @@ let currentArgs: Record<string, unknown> = {};
 let currentTool = 'gdocsListDocuments';
 let isRefreshing = false;
 let currentPayload: BrowserPayload = {};
+let isDarkTheme = false;
+
+function detectDarkTheme(): boolean {
+  const context = app.getHostContext();
+  const theme = context?.theme as { mode?: string; appearance?: string; colorScheme?: string } | undefined;
+  const mode = (theme?.mode ?? theme?.appearance ?? theme?.colorScheme ?? '').toLowerCase();
+  if (mode.includes('dark')) return true;
+  if (mode.includes('light')) return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
 
 function applyHost() {
   const context = app.getHostContext();
   if (context?.theme) applyDocumentTheme(context.theme);
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+  isDarkTheme = detectDarkTheme();
 }
 
 function notifySizeChanged() {
@@ -80,13 +91,48 @@ function render(payload: BrowserPayload) {
     mode === 'search'
       ? `Showing documents that matched ${payload.query ? `"${payload.query}"` : 'your query'}.`
       : 'Browse readable Google Docs documents from Drive.';
+  const theme = isDarkTheme
+    ? {
+        title: '#f5f5f5',
+        text: '#d4d4d8',
+        muted: '#a1a1aa',
+        shellBg: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 34%), linear-gradient(180deg, #0f172a 0%, #172554 100%)',
+        panelBg: 'rgba(24, 24, 27, 0.94)',
+        panelBorder: 'rgba(191, 219, 254, 0.12)',
+        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
+        accent: '#93c5fd',
+        chipBg: '#172b4d',
+        chipText: '#93c5fd',
+        headText: '#94a3b8',
+        rowBorder: 'rgba(191, 219, 254, 0.1)',
+        link: '#e0f2fe',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
+      }
+    : {
+        title: '#18212f',
+        text: '#5b6471',
+        muted: '#667085',
+        shellBg: 'radial-gradient(circle at top left, rgba(231, 244, 255, 0.9), transparent 35%), linear-gradient(180deg, #f8fbff 0%, #fffdf8 100%)',
+        panelBg: 'rgba(255,255,255,0.93)',
+        panelBorder: 'rgba(24,33,47,0.1)',
+        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
+        accent: '#2563eb',
+        chipBg: '#eff6ff',
+        chipText: '#2563eb',
+        headText: '#667085',
+        rowBorder: 'rgba(24,33,47,0.06)',
+        link: '#5b6f95',
+        buttonBg: '#18212f',
+        buttonText: '#ffffff',
+      };
 
   root.innerHTML = `
     <style>
       html, body { margin: 0; padding: 0; min-height: 0; }
       body {
         font-family: Georgia, serif;
-        color: #18212f;
+        color: ${theme.title};
         background: transparent;
         padding: 0;
       }
@@ -97,20 +143,18 @@ function render(payload: BrowserPayload) {
         padding: 10px;
         border-radius: 22px;
         overflow: hidden;
-        background:
-          radial-gradient(circle at top left, rgba(231, 244, 255, 0.9), transparent 35%),
-          linear-gradient(180deg, #f8fbff 0%, #fffdf8 100%);
+        background: ${theme.shellBg};
       }
       .hero, .panel {
-        background: rgba(255,255,255,0.93);
-        border: 1px solid rgba(24,33,47,0.1);
+        background: ${theme.panelBg};
+        border: 1px solid ${theme.panelBorder};
         border-radius: 18px;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+        box-shadow: ${theme.shadow};
       }
       .hero { padding: 12px; display: grid; gap: 8px; }
-      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: #0f766e; }
+      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${theme.accent}; }
       h1, p { margin: 0; }
-      h1 { font-size: 22px; line-height: 1.08; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${theme.accent}; }
       .toolbar {
         display: flex;
         align-items: flex-end;
@@ -120,15 +164,15 @@ function render(payload: BrowserPayload) {
       }
       .toolbar-main { min-width: 0; display: grid; gap: 6px; }
       .toolbar-actions { display: flex; align-items: flex-end; flex: 0 0 auto; margin-left: auto; }
-      .subhead { color: #5b6471; font-size: 13px; line-height: 1.4; }
+      .subhead { color: ${theme.text}; font-size: 13px; line-height: 1.4; }
       .chips { display: flex; flex-wrap: wrap; gap: 6px; }
       .chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         border-radius: 999px;
-        background: #eef6ff;
-        color: #1d4ed8;
+        background: ${theme.chipBg};
+        color: ${theme.chipText};
         padding: 4px 8px;
         font-size: 11px;
       }
@@ -137,8 +181,8 @@ function render(payload: BrowserPayload) {
         border-radius: 999px;
         padding: 4px 10px;
         font: inherit;
-        background: #18212f;
-        color: white;
+        background: ${theme.buttonBg};
+        color: ${theme.buttonText};
         cursor: pointer;
         min-width: 66px;
         font-size: 11px;
@@ -157,30 +201,30 @@ function render(payload: BrowserPayload) {
       }
       .table-head {
         padding: 9px 12px;
-        border-bottom: 1px solid rgba(24,33,47,0.08);
-        color: #667085;
+        border-bottom: 1px solid ${theme.rowBorder};
+        color: ${theme.headText};
         font-size: 12px;
       }
       .table-body { max-height: 560px; overflow: auto; }
       .table-row {
         padding: 8px 12px;
-        border-bottom: 1px solid rgba(24,33,47,0.06);
+        border-bottom: 1px solid ${theme.rowBorder};
         font-size: 13px;
       }
       .table-row:last-child { border-bottom: 0; }
-      .name-title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+      .name-title { font-size: 14px; font-weight: 700; line-height: 1.3; color: ${theme.title}; }
       .name-link {
         display: inline-flex;
         margin-top: 3px;
-        color: #14532d;
+        color: ${theme.link};
         text-decoration: none;
         font-size: 12px;
         font-weight: 600;
       }
       .name-link:hover { text-decoration: underline; }
-      .muted { color: #5b6471; font-size: 12px; }
-      .empty { padding: 18px 14px; color: #5b6471; font-size: 14px; }
-      .note { color: #667085; font-size: 11px; line-height: 1.45; }
+      .muted { color: ${theme.text}; font-size: 12px; }
+      .empty { padding: 18px 14px; color: ${theme.text}; font-size: 14px; }
+      .note { color: ${theme.muted}; font-size: 11px; line-height: 1.45; }
     </style>
     <div class="shell">
       <section class="hero">
@@ -254,5 +298,8 @@ app.ontoolresult = (result) => {
   render(payload);
 };
 
-app.onhostcontextchanged = () => applyHost();
+app.onhostcontextchanged = () => {
+  applyHost();
+  if (currentPayload.documents) render(currentPayload);
+};
 app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
