@@ -124,6 +124,10 @@ YOUR_API_KEY=your_api_key_here  # ← Add your environment variables
 - Claude Desktop configuration paths
 - OAuth scopes grouped by category (`Required` vs `Optional`)
 - Admin-consent prerequisite (if provider requires tenant admin approval)
+- If MCP Apps are added:
+  - document the chosen header/body/footer reference structure
+  - document light/dark theme behavior
+  - document whether header accent color is intentionally different from action-link color
 
 ### 6. Dockerfile (if using)
 
@@ -236,6 +240,23 @@ This tool can be used when users ask:
   }
 );
 ```
+
+### 4. If You Add MCP Apps Views
+
+Before shipping a view, verify:
+
+- header has only one primary title block
+- refresh/action controls align with the last header row
+- there is no duplicated metadata between header and secondary summary cards
+- light mode uses branded tint mainly in the shell, not the full content area
+- dark mode uses neutral content panels for readability
+- action links are visually distinct from header/chip accents
+
+This is a reference checklist, not a requirement that every view share the exact same layout.
+Color tokens are also reference defaults. It is acceptable to choose a different accent family or add more complex layout sections if the tool benefits from it.
+- verify density is appropriate for the tool type (browser/table/tree vs reader/detail)
+- verify empty and error states are explicit and not overly generic
+- verify the view still works reasonably under common host limitations
 
 ### 3. Create Tests
 

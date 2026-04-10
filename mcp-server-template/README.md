@@ -36,6 +36,37 @@ This checklist will guide you through:
 - 📚 **Complete Documentation**: Detailed code comments and usage documentation
 - 🎯 **Production Ready**: Signal handling, error catching, logging system
 
+### MCP Apps View Design Reference
+
+If your server includes MCP Apps views, use these as the default reference structure unless the product domain has a clear reason to diverge:
+
+- layout and color choices here are reference defaults, not fixed prescriptions
+- if a tool clearly benefits from a richer interface, it is valid to add sections such as side panels, tabs, filter bars, sticky headers, summary blocks, or scroll containers
+- when extending beyond the reference layout, keep the same core principles: hierarchy, readability, theme consistency, and clear separation between accent styling and action styling
+- density, empty/error states, and host constraints should also be considered part of the reference design review
+
+- **Header structure reference**
+  - `eyebrow` line for product name
+  - one primary `title`
+  - one `subtitle` line for context
+  - one compact chip row for counts, filters, or format
+  - actions aligned to the right side of the last header row, not floating in a separate row
+- **Body structure reference**
+  - primary content goes in a neutral `panel`
+  - lists/tables should be the dominant visual area
+  - document/table/message content should use a more neutral reading surface than the outer shell
+- **Footer / note area reference**
+  - keep notes short
+  - use it only for host-specific hints such as blocked external navigation
+- **Light/dark theme reference**
+  - light and dark modes must preserve the same product identity
+  - outer `shell` may use branded color tint or gradient
+  - main reading/data panels should stay more neutral
+  - header accent color and action-link color should be different
+  - chips should share the header accent hue, but with lower intensity
+  - dark mode should prioritize readability over saturation
+  - do not color the full content area with the accent hue
+
 ---
 
 ## 📁 Project Structure

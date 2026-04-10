@@ -69,6 +69,140 @@ mcp-server-template/
 
 ---
 
+## MCP Apps View Layout Reference
+
+When a project adds MCP Apps support, start from this reference structure and adjust it where the tool's information model clearly needs something different.
+
+This also applies to color:
+- the theme tokens in the reference examples are defaults, not hard requirements
+- use a different accent family or richer layout if the tool domain justifies it
+- add more complex sections only when they materially improve navigation, scanning, or task completion
+
+### Recommended header structure
+
+Use a compact hero/header with this order:
+
+1. `eyebrow`
+2. primary `title`
+3. one-line `subtitle`
+4. `chips` row
+5. right-aligned actions on the same bottom row as the last content line
+
+Avoid by default:
+- place the refresh button on its own line
+- use oversized titles that push content too far down
+- duplicate metadata both in the title block and again in a second summary block
+
+### Recommended body structure
+
+- The main panel should hold the important content:
+  - browser/table rows
+  - document/message content
+  - metadata table
+- For reading-heavy panels, the reading surface should be visually calmer than the outer shell
+- For tree/list/table tools, prioritize dense alignment over decorative spacing
+- If the tool needs it, it is acceptable to add:
+  - side panels
+  - tabs or mode switches
+  - filter bars
+  - sticky headers
+  - secondary summaries
+  - bounded scroll regions
+
+### Footer structure
+
+- Footer notes should be optional
+- Use them for host-specific hints only, for example:
+  - Claude may block direct navigation
+- Avoid repeating information already shown in chips or headers
+
+## MCP Apps Theme Reference
+
+### General
+
+- Light and dark modes should feel like the same product, not two unrelated themes
+- Accent color is for identity
+- Content surfaces are for readability
+
+### Light mode
+
+- Outer shell may use a light branded tint or gradient
+- Panels should stay near-white
+- Header accent, labels, and chips should share one hue family
+- Action links should be visually distinct from header accents
+
+### Dark mode
+
+- Outer shell may keep a darker branded tint
+- Primary reading/data panels should move toward neutral charcoal or black-gray
+- Avoid overusing blue, purple, or green across the full surface
+- Use high-contrast buttons and readable text first
+
+### Accent separation
+
+Treat these as separate roles by default:
+
+- `accent`
+  - eyebrow
+  - title
+  - chips
+  - labels
+- `actionLink`
+  - `Open in ...`
+  - `View in ...`
+  - external navigation links
+
+Those two should not collapse into the exact same color unless there is a strong product reason.
+
+## Density And Spacing
+
+- List, tree, and table views should prioritize scanability over decorative whitespace
+- Reading views can be more relaxed, but should still keep the primary content near the top
+- Do not expand headers so much that they materially reduce the visible data area
+- Default rule:
+  - browser/table/tree tools = denser layout
+  - reader/detail tools = slightly looser layout
+- Compact chips, metadata rows, and action areas are usually preferable to oversized cards
+
+## Empty And Error States
+
+Views should clearly distinguish these cases:
+
+- `empty`
+  - valid request, but no results
+- `auth failure`
+  - token missing, invalid, or expired
+- `permission failure`
+  - user is authenticated but lacks access
+- `upstream unavailable`
+  - provider outage, timeout, or temporary service failure
+- `host limitation`
+  - external link blocked, view cache not refreshed, or other host-specific behavior
+
+Guidance:
+- empty states should say why there is no content
+- auth states should guide the user toward reconnecting or refreshing credentials
+- avoid vague “something went wrong” copy if the failure class is known
+- do not overload the main layout with giant warning banners unless the view is unusable
+
+## Host Constraints
+
+MCP Apps run inside a host, not a normal full-trust browser page. Design with that constraint in mind.
+
+Expected host limitations:
+- external links may not open on normal left click
+- view height may not shrink exactly to content
+- hosts may cache old HTML resources longer than expected
+- refresh actions may not behave exactly like a traditional web app
+
+Design implications:
+- provide concise host hints only when they help the user complete the task
+- tolerate fixed or minimum-height containers
+- avoid layouts that depend on perfect browser navigation behavior
+- keep critical information visible without requiring fragile interactions
+
+---
+
 ## 🚀 Quick Start
 
 ### 1. Initialize Project
