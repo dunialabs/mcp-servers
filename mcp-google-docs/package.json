@@ -1,6 +1,6 @@
 {
   "name": "@anthropic/mcp-google-docs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Google Docs MCP Server - Read, write, and format Google Documents",
   "main": "dist/stdio.js",
   "type": "module",
