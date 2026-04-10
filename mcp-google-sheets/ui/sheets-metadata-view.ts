@@ -29,13 +29,25 @@ if (!root) throw new Error('Missing root element');
 
 const app = new App({ name: 'sheets-metadata-view', version: '0.1.0' }, {}, { autoResize: true });
 let currentArgs: Record<string, unknown> = {};
+let currentPayload: MetadataPayload = {};
 let isRefreshing = false;
+let isDarkTheme = false;
+
+function detectDarkTheme(): boolean {
+  const context = app.getHostContext();
+  const theme = context?.theme as { mode?: string; appearance?: string; colorScheme?: string } | undefined;
+  const mode = (theme?.mode ?? theme?.appearance ?? theme?.colorScheme ?? '').toLowerCase();
+  if (mode.includes('dark')) return true;
+  if (mode.includes('light')) return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
 
 function applyHost() {
   const context = app.getHostContext();
   if (context?.theme) applyDocumentTheme(context.theme);
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+  isDarkTheme = detectDarkTheme();
 }
 
 function notifySizeChanged() {
@@ -56,90 +68,205 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
+function getTheme() {
+  return isDarkTheme
+    ? {
+        title: '#f5f5f5',
+        text: '#d4d4d8',
+        muted: '#a1a1aa',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(34, 197, 94, 0.14), transparent 36%), linear-gradient(180deg, #0f172a 0%, #0b1a0d 100%)',
+        panelBg: 'rgba(24, 24, 27, 0.94)',
+        panelBorder: 'rgba(34, 197, 94, 0.12)',
+        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
+        accent: '#4ade80',
+        chipBg: '#052e16',
+        chipText: '#4ade80',
+        headText: '#94a3b8',
+        rowBorder: 'rgba(34, 197, 94, 0.1)',
+        link: '#86efac',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
+      }
+    : {
+        title: '#14200d',
+        text: '#5b6471',
+        muted: '#667085',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(220, 252, 231, 0.85), transparent 35%), linear-gradient(180deg, #f7fdf9 0%, #f0fdf4 100%)',
+        panelBg: 'rgba(255,255,255,0.93)',
+        panelBorder: 'rgba(20, 83, 45, 0.1)',
+        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
+        accent: '#15803d',
+        chipBg: '#f0fdf4',
+        chipText: '#15803d',
+        headText: '#667085',
+        rowBorder: 'rgba(20, 83, 45, 0.07)',
+        link: '#166534',
+        buttonBg: '#14200d',
+        buttonText: '#ffffff',
+      };
+}
+
 function render(payload: MetadataPayload) {
+  currentPayload = payload;
   const spreadsheet = payload.spreadsheet;
   const sheets = spreadsheet?.sheets ?? [];
+  const t = getTheme();
+
   root.innerHTML = `
     <style>
       html, body { margin: 0; padding: 0; min-height: 0; }
-      body {
-        font-family: Georgia, serif;
-        color: #18212f;
-        background:
-          radial-gradient(circle at top left, rgba(231, 244, 255, 0.9), transparent 35%),
-          linear-gradient(180deg, #f8fbff 0%, #fffdf8 100%);
-        padding: 14px;
-      }
-      .shell { display: grid; gap: 12px; }
-      .hero, .panel {
-        background: rgba(255,255,255,0.93);
-        border: 1px solid rgba(24,33,47,0.1);
-        border-radius: 18px;
-        box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
-      }
-      .hero { padding: 12px; display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; }
-      .hero-main { min-width: 0; }
-      .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: #0f766e; }
-      h1, h2, p { margin: 0; }
-      h1 { font-size: 22px; line-height: 1.08; }
-      .meta { margin-top: 6px; color: #5b6471; line-height: 1.4; font-size: 13px; }
-      button { border: 0; border-radius: 999px; padding: 4px 10px; font: inherit; background: #18212f; color: white; cursor: pointer; min-width: 66px; font-size: 11px; }
-      button:disabled { opacity: 0.65; cursor: default; }
-      .panel { padding: 12px; }
-      .label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; color: #667085; margin-bottom: 6px; }
-      .value { font-size: 18px; line-height: 1.2; }
-      .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-      .chip { border-radius: 999px; background: #eef6ff; color: #1d4ed8; padding: 4px 8px; font-size: 11px; }
-      .panel { display: grid; gap: 10px; }
-      .sheet-row {
+      body { font-family: Georgia, serif; color: ${t.title}; background: transparent; padding: 0; }
+      .shell {
         display: grid;
-        grid-template-columns: minmax(200px, 2.4fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr);
+        gap: 12px;
+        margin: 10px;
+        padding: 10px;
+        border-radius: 22px;
+        background: ${t.shellBg};
+      }
+      .hero, .panel {
+        background: ${t.panelBg};
+        border: 1px solid ${t.panelBorder};
+        border-radius: 18px;
+        box-shadow: ${t.shadow};
+      }
+      .hero { padding: 12px; display: grid; gap: 8px; }
+      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${t.accent}; }
+      h1, p { margin: 0; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${t.accent}; }
+      .toolbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: nowrap;
+      }
+      .toolbar-main { min-width: 0; display: grid; gap: 6px; }
+      .subhead { color: ${t.text}; font-size: 13px; line-height: 1.4; }
+      .toolbar-actions { display: flex; align-items: flex-end; flex: 0 0 auto; margin-left: auto; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: ${t.chipBg};
+        color: ${t.chipText};
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font: inherit;
+        background: ${t.buttonBg};
+        color: ${t.buttonText};
+        cursor: pointer;
+        min-width: 66px;
+        font-size: 11px;
+      }
+      button:disabled { opacity: 0.65; cursor: default; }
+      @media (max-width: 640px) {
+        .toolbar { flex-wrap: wrap; }
+        .toolbar-actions { width: 100%; justify-content: flex-end; margin-left: 0; }
+      }
+      .panel { overflow: hidden; }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        flex-wrap: wrap;
+      }
+      .label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; color: ${t.accent}; }
+      .sheet-link {
+        color: ${t.link};
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .sheet-link:hover { text-decoration: underline; }
+      .table-head, .sheet-row {
+        display: grid;
+        grid-template-columns: minmax(200px, 2.4fr) minmax(80px, 0.8fr) minmax(80px, 0.8fr) minmax(80px, 0.7fr);
         gap: 12px;
         align-items: center;
-        padding: 7px 0;
-        border-bottom: 1px solid rgba(24,33,47,0.06);
+      }
+      .table-head {
+        padding: 9px 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        color: ${t.headText};
+        font-size: 12px;
+      }
+      .table-body { max-height: 480px; overflow: auto; }
+      .sheet-row {
+        padding: 7px 12px;
+        border-bottom: 1px solid ${t.rowBorder};
         font-size: 13px;
       }
       .sheet-row:last-child { border-bottom: 0; }
-      .head { color: #667085; font-size: 12px; }
-      .link {
-        display: inline-flex;
-        align-items: center;
-        color: #14532d;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 13px;
-      }
-      .link:hover { text-decoration: underline; }
-      .muted { color: #5b6471; }
+      .sheet-title { font-size: 14px; font-weight: 700; line-height: 1.3; color: ${t.title}; }
+      .muted { color: ${t.text}; font-size: 12px; }
+      .empty { padding: 18px 14px; color: ${t.text}; font-size: 14px; }
     </style>
     <div class="shell">
       <section class="hero">
-        <div class="hero-main">
-          <p class="eyebrow">Google Sheets</p>
-          <h1>${escapeHtml(spreadsheet?.title || 'Untitled spreadsheet')}</h1>
-          <div class="chips">
-            <span class="chip">Sheets: ${escapeHtml(String(spreadsheet?.sheetCount ?? sheets.length))}</span>
-            <span class="chip">Locale: ${escapeHtml(spreadsheet?.locale || 'Unknown')}</span>
-            <span class="chip">Time zone: ${escapeHtml(spreadsheet?.timeZone || 'Unknown')}</span>
+        <p class="eyebrow">Google Sheets</p>
+        <h1>${escapeHtml(spreadsheet?.title || 'Untitled spreadsheet')}</h1>
+        <div class="toolbar">
+          <div class="toolbar-main">
+            <p class="subhead">Spreadsheet structure, sheet tabs, and locale settings.</p>
+            <div class="chips">
+              <span class="chip">Sheets: ${escapeHtml(String(spreadsheet?.sheetCount ?? sheets.length))}</span>
+              <span class="chip">Locale: ${escapeHtml(spreadsheet?.locale || 'Unknown')}</span>
+              <span class="chip">Time zone: ${escapeHtml(spreadsheet?.timeZone || 'Unknown')}</span>
+            </div>
           </div>
-          ${spreadsheet?.spreadsheetUrl ? `<p class="meta"><a class="link" href="${escapeHtml(spreadsheet.spreadsheetUrl)}" target="_blank" rel="noreferrer">Open in Sheets</a></p>` : ''}
+          <div class="toolbar-actions">
+            <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
+          </div>
         </div>
-        <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
       </section>
       <section class="panel">
-        <div class="sheet-row head"><div>Sheet</div><div>Rows</div><div>Columns</div><div>Type</div></div>
-        ${sheets.map((sheet) => `
-          <div class="sheet-row">
-            <div><strong>${escapeHtml(sheet.title || 'Untitled sheet')}</strong><div class="muted">Sheet ID: ${escapeHtml(String(sheet.sheetId ?? 'N/A'))}</div></div>
-            <div>${escapeHtml(String(sheet.rowCount ?? '—'))}</div>
-            <div>${escapeHtml(String(sheet.columnCount ?? '—'))}</div>
-            <div>${escapeHtml(sheet.sheetType || 'GRID')}</div>
-          </div>
-        `).join('')}
+        <div class="panel-head">
+          <div class="label">Sheets</div>
+          ${spreadsheet?.spreadsheetUrl ? `<a class="sheet-link" href="${escapeHtml(spreadsheet.spreadsheetUrl)}" target="_blank" rel="noreferrer">Open in Sheets</a>` : ''}
+        </div>
+        <div class="table-head">
+          <div>Sheet</div>
+          <div>Rows</div>
+          <div>Columns</div>
+          <div>Type</div>
+        </div>
+        <div class="table-body">
+          ${
+            sheets.length === 0
+              ? '<div class="empty">No sheet tabs found.</div>'
+              : sheets
+                  .map(
+                    (sheet) => `
+            <div class="sheet-row">
+              <div>
+                <div class="sheet-title">${escapeHtml(sheet.title || 'Untitled sheet')}</div>
+                <div class="muted">Sheet ID: ${escapeHtml(String(sheet.sheetId ?? 'N/A'))}</div>
+              </div>
+              <div class="muted">${escapeHtml(String(sheet.rowCount ?? '—'))}</div>
+              <div class="muted">${escapeHtml(String(sheet.columnCount ?? '—'))}</div>
+              <div class="muted">${escapeHtml(sheet.sheetType || 'GRID')}</div>
+            </div>
+          `,
+                  )
+                  .join('')
+          }
+        </div>
       </section>
     </div>
   `;
+
   bindRefresh();
   notifySizeChanged();
 }
@@ -148,7 +275,7 @@ function bindRefresh() {
   root.querySelector<HTMLButtonElement>('#refresh')?.addEventListener('click', async () => {
     if (isRefreshing) return;
     isRefreshing = true;
-    render((window as unknown as { __payload?: MetadataPayload }).__payload ?? {});
+    render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'gsheetsGetSpreadsheet', arguments: currentArgs });
       render((result.structuredContent ?? {}) as MetadataPayload);
@@ -164,10 +291,11 @@ app.ontoolinput = ({ arguments: args }) => {
 };
 
 app.ontoolresult = (result) => {
-  const payload = (result.structuredContent ?? {}) as MetadataPayload;
-  (window as unknown as { __payload?: MetadataPayload }).__payload = payload;
-  render(payload);
+  render((result.structuredContent ?? {}) as MetadataPayload);
 };
 
-app.onhostcontextchanged = () => applyHost();
+app.onhostcontextchanged = () => {
+  applyHost();
+  if (currentPayload.spreadsheet) render(currentPayload);
+};
 app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);

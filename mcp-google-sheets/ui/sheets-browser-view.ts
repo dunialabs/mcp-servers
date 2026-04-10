@@ -27,13 +27,25 @@ if (!root) throw new Error('Missing root element');
 
 const app = new App({ name: 'sheets-browser-view', version: '0.1.0' }, {}, { autoResize: true });
 let currentArgs: Record<string, unknown> = {};
+let currentPayload: BrowserPayload = {};
 let isRefreshing = false;
+let isDarkTheme = false;
+
+function detectDarkTheme(): boolean {
+  const context = app.getHostContext();
+  const theme = context?.theme as { mode?: string; appearance?: string; colorScheme?: string } | undefined;
+  const mode = (theme?.mode ?? theme?.appearance ?? theme?.colorScheme ?? '').toLowerCase();
+  if (mode.includes('dark')) return true;
+  if (mode.includes('light')) return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
 
 function applyHost() {
   const context = app.getHostContext();
   if (context?.theme) applyDocumentTheme(context.theme);
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+  isDarkTheme = detectDarkTheme();
 }
 
 function notifySizeChanged() {
@@ -74,32 +86,73 @@ function ownerLabel(owners?: Owner[] | null): string {
   return names.length > 0 ? names.join(', ') : 'Unknown';
 }
 
+function getTheme() {
+  return isDarkTheme
+    ? {
+        title: '#f5f5f5',
+        text: '#d4d4d8',
+        muted: '#a1a1aa',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(34, 197, 94, 0.14), transparent 36%), linear-gradient(180deg, #0f172a 0%, #0b1a0d 100%)',
+        panelBg: 'rgba(24, 24, 27, 0.94)',
+        panelBorder: 'rgba(34, 197, 94, 0.12)',
+        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
+        accent: '#4ade80',
+        chipBg: '#052e16',
+        chipText: '#4ade80',
+        headText: '#94a3b8',
+        rowBorder: 'rgba(34, 197, 94, 0.1)',
+        link: '#86efac',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
+      }
+    : {
+        title: '#14200d',
+        text: '#5b6471',
+        muted: '#667085',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(220, 252, 231, 0.85), transparent 35%), linear-gradient(180deg, #f7fdf9 0%, #f0fdf4 100%)',
+        panelBg: 'rgba(255,255,255,0.93)',
+        panelBorder: 'rgba(20, 83, 45, 0.1)',
+        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
+        accent: '#15803d',
+        chipBg: '#f0fdf4',
+        chipText: '#15803d',
+        headText: '#667085',
+        rowBorder: 'rgba(20, 83, 45, 0.07)',
+        link: '#166534',
+        buttonBg: '#14200d',
+        buttonText: '#ffffff',
+      };
+}
+
 function render(payload: BrowserPayload) {
+  currentPayload = payload;
   const spreadsheets = payload.spreadsheets ?? [];
+  const t = getTheme();
+
   root.innerHTML = `
     <style>
       html, body { margin: 0; padding: 0; min-height: 0; }
-      body {
-        font-family: Georgia, serif;
-        color: #18212f;
-        background:
-          radial-gradient(circle at top left, rgba(231, 244, 255, 0.9), transparent 35%),
-          linear-gradient(180deg, #f8fbff 0%, #fffdf8 100%);
-        padding: 14px;
+      body { font-family: Georgia, serif; color: ${t.title}; background: transparent; padding: 0; }
+      .shell {
+        display: grid;
+        gap: 12px;
+        margin: 10px;
+        padding: 10px;
+        border-radius: 22px;
+        background: ${t.shellBg};
       }
-      .shell { display: grid; gap: 12px; }
       .hero, .panel {
-        background: rgba(255,255,255,0.93);
-        border: 1px solid rgba(24,33,47,0.1);
+        background: ${t.panelBg};
+        border: 1px solid ${t.panelBorder};
         border-radius: 18px;
-        box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+        box-shadow: ${t.shadow};
       }
       .hero { padding: 12px; display: grid; gap: 8px; }
-      .hero-main { min-width: 0; }
-      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: #0f766e; }
+      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${t.accent}; }
       h1, p { margin: 0; }
-      h1 { font-size: 22px; line-height: 1.08; }
-      .subhead { color: #5b6471; font-size: 13px; line-height: 1.4; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${t.accent}; }
       .toolbar {
         display: flex;
         align-items: flex-end;
@@ -107,16 +160,16 @@ function render(payload: BrowserPayload) {
         gap: 12px;
         flex-wrap: nowrap;
       }
-      .chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; min-width: 0; }
       .toolbar-main { min-width: 0; display: grid; gap: 6px; }
       .toolbar-actions { display: flex; align-items: flex-end; flex: 0 0 auto; margin-left: auto; }
+      .subhead { color: ${t.text}; font-size: 13px; line-height: 1.4; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
       .chip {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
         border-radius: 999px;
-        background: #eef6ff;
-        color: #1d4ed8;
+        background: ${t.chipBg};
+        color: ${t.chipText};
         padding: 4px 8px;
         font-size: 11px;
       }
@@ -125,8 +178,8 @@ function render(payload: BrowserPayload) {
         border-radius: 999px;
         padding: 4px 10px;
         font: inherit;
-        background: #18212f;
-        color: white;
+        background: ${t.buttonBg};
+        color: ${t.buttonText};
         cursor: pointer;
         min-width: 66px;
         font-size: 11px;
@@ -145,31 +198,30 @@ function render(payload: BrowserPayload) {
       }
       .table-head {
         padding: 9px 12px;
-        border-bottom: 1px solid rgba(24,33,47,0.08);
-        color: #667085;
+        border-bottom: 1px solid ${t.rowBorder};
+        color: ${t.headText};
         font-size: 12px;
       }
       .table-body { max-height: 520px; overflow: auto; }
       .table-row {
         padding: 7px 12px;
-        border-bottom: 1px solid rgba(24,33,47,0.06);
+        border-bottom: 1px solid ${t.rowBorder};
         font-size: 13px;
       }
       .table-row:last-child { border-bottom: 0; }
-      .name-cell { min-width: 0; }
-      .name-title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+      .name-title { font-size: 14px; font-weight: 700; line-height: 1.3; color: ${t.title}; }
       .name-link {
         display: inline-flex;
         margin-top: 3px;
-        color: #14532d;
+        color: ${t.link};
         text-decoration: none;
         font-size: 12px;
         font-weight: 600;
       }
       .name-link:hover { text-decoration: underline; }
-      .muted { color: #5b6471; font-size: 12px; }
-      .empty { padding: 18px 14px; color: #5b6471; font-size: 14px; }
-      .note { color: #667085; font-size: 11px; line-height: 1.45; }
+      .muted { color: ${t.text}; font-size: 12px; }
+      .empty { padding: 18px 14px; color: ${t.text}; font-size: 14px; }
+      .note { color: ${t.muted}; font-size: 11px; line-height: 1.45; }
     </style>
     <div class="shell">
       <section class="hero">
@@ -177,12 +229,12 @@ function render(payload: BrowserPayload) {
         <h1>Spreadsheet Browser</h1>
         <div class="toolbar">
           <div class="toolbar-main">
-            <p class="subhead">Browse spreadsheet files with owner and update context. Non-App clients still receive the original JSON payload.</p>
+            <p class="subhead">Browse spreadsheet files with owner and update context.</p>
             <div class="chips">
-            <span class="chip">Results: ${escapeHtml(String(payload.totalResults ?? spreadsheets.length))}</span>
-            ${payload.query ? `<span class="chip">Query: ${escapeHtml(payload.query)}</span>` : ''}
-            ${payload.nextPageToken ? '<span class="chip">More available</span>' : ''}
-          </div>
+              <span class="chip">Results: ${escapeHtml(String(payload.totalResults ?? spreadsheets.length))}</span>
+              ${payload.query ? `<span class="chip">Query: ${escapeHtml(payload.query)}</span>` : ''}
+              ${payload.nextPageToken ? '<span class="chip">More available</span>' : ''}
+            </div>
           </div>
           <div class="toolbar-actions">
             <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
@@ -196,16 +248,24 @@ function render(payload: BrowserPayload) {
           <div>Owner</div>
         </div>
         <div class="table-body">
-          ${spreadsheets.length === 0 ? '<div class="empty">No spreadsheets matched this query.</div>' : spreadsheets.map((sheet) => `
+          ${
+            spreadsheets.length === 0
+              ? '<div class="empty">No spreadsheets matched this query.</div>'
+              : spreadsheets
+                  .map(
+                    (sheet) => `
             <div class="table-row">
-              <div class="name-cell">
+              <div>
                 <div class="name-title">📊 ${escapeHtml(sheet.title || 'Untitled spreadsheet')}</div>
                 ${sheet.spreadsheetUrl ? `<a class="name-link" href="${escapeHtml(sheet.spreadsheetUrl)}" target="_blank" rel="noreferrer">Open in Sheets</a>` : ''}
               </div>
               <div class="muted">${escapeHtml(formatDate(sheet.modifiedTime))}</div>
               <div class="muted">${escapeHtml(ownerLabel(sheet.owners))}</div>
             </div>
-          `).join('')}
+          `,
+                  )
+                  .join('')
+          }
         </div>
       </section>
       <p class="note">Claude may block direct left-click navigation. If needed, use right-click and open the link in your browser.</p>
@@ -220,7 +280,7 @@ function bindRefresh() {
   root.querySelector<HTMLButtonElement>('#refresh')?.addEventListener('click', async () => {
     if (isRefreshing) return;
     isRefreshing = true;
-    render({ ...(window as unknown as { __payload?: BrowserPayload }).__payload });
+    render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'gsheetsListSpreadsheets', arguments: currentArgs });
       render((result.structuredContent ?? {}) as BrowserPayload);
@@ -236,10 +296,11 @@ app.ontoolinput = ({ arguments: args }) => {
 };
 
 app.ontoolresult = (result) => {
-  const payload = (result.structuredContent ?? {}) as BrowserPayload;
-  (window as unknown as { __payload?: BrowserPayload }).__payload = payload;
-  render(payload);
+  render((result.structuredContent ?? {}) as BrowserPayload);
 };
 
-app.onhostcontextchanged = () => applyHost();
+app.onhostcontextchanged = () => {
+  applyHost();
+  if (currentPayload.spreadsheets) render(currentPayload);
+};
 app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
