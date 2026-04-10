@@ -99,7 +99,7 @@ Add this to your Claude Desktop config:
     "apps-test": {
       "command": "node",
       "args": [
-        "/Users/tataufo/mcp-servers/mcp-apps-test/dist/stdio.js"
+        "/absolute/path/to/mcp-apps-test/dist/stdio.js"
       ]
     }
   }
