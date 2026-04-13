@@ -580,7 +580,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | HubSpot | `ghcr.io/dunialabs/mcp-servers/hubspot` | v1.0.0 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.0 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.0 |
-| Notion | `ghcr.io/dunialabs/mcp-servers/notion` | v1.1.2 |
+| Notion | `ghcr.io/dunialabs/mcp-servers/notion` | v1.1.3 |
 | Pipedrive | `ghcr.io/dunialabs/mcp-servers/pipedrive` | v1.0.0 |
 | PostgreSQL | `ghcr.io/dunialabs/mcp-servers/postgres` | v1.1.2 |
 | REST Gateway | `ghcr.io/dunialabs/mcp-servers/rest-gateway` | v1.0.1 |
