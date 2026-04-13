@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-google-calendar",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Google Calendar MCP Server for PETA ecosystem with STDIO transport and MCP Apps-enhanced calendar views.",
   "main": "dist/stdio.js",
   "type": "module",

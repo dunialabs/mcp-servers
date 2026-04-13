@@ -11,15 +11,8 @@ type EventRecord = {
   htmlLink?: string | null;
 };
 
-type ToolInput = {
-  calendarId?: string;
-  timeMin?: string;
-  timeMax?: string;
-  maxResults?: number;
-  orderBy?: 'startTime' | 'updated';
-};
-
 type StructuredPayload = {
+  kind?: string;
   calendarId?: string;
   totalResults?: number;
   timeMin?: string | null;
@@ -42,24 +35,40 @@ type EventGroup = {
   occurrences: EventRecord[];
 };
 
-const appRoot = document.querySelector<HTMLDivElement>('#app');
-const subhead = document.querySelector<HTMLParagraphElement>('#subhead');
-const statusEl = document.querySelector<HTMLElement>('#status');
-const summaryEl = document.querySelector<HTMLElement>('#summary');
-const eventsEl = document.querySelector<HTMLElement>('#events');
-const refreshButton = document.querySelector<HTMLButtonElement>('#refresh');
+const root = document.querySelector<HTMLDivElement>('#app');
+if (!root) throw new Error('Missing root element');
 
-if (!appRoot || !subhead || !statusEl || !summaryEl || !eventsEl || !refreshButton) {
-  throw new Error('Missing required DOM elements for calendar events view.');
+const app = new App({ name: 'calendar-events-view', version: '0.1.0' }, {}, { autoResize: true });
+let currentArgs: Record<string, unknown> = {};
+let currentPayload: StructuredPayload = {};
+let isRefreshing = false;
+let isDarkTheme = false;
+
+function detectDarkTheme(): boolean {
+  const context = app.getHostContext();
+  const theme = context?.theme as { mode?: string; appearance?: string; colorScheme?: string } | undefined;
+  const mode = (theme?.mode ?? theme?.appearance ?? theme?.colorScheme ?? '').toLowerCase();
+  if (mode.includes('dark')) return true;
+  if (mode.includes('light')) return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }
 
-const app = new App(
-  { name: 'google-calendar-events-view', version: '0.1.0' },
-  { tools: { listChanged: false } },
-  { autoResize: true }
-);
+function applyHost() {
+  const context = app.getHostContext();
+  if (context?.theme) applyDocumentTheme(context.theme);
+  if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
+  if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+  isDarkTheme = detectDarkTheme();
+}
 
-let currentInput: ToolInput = {};
+function notifySizeChanged() {
+  requestAnimationFrame(() => {
+    void app.sendSizeChanged({
+      width: Math.ceil(document.documentElement.scrollWidth),
+      height: Math.ceil(document.documentElement.scrollHeight),
+    });
+  });
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -70,64 +79,47 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function formatDate(value?: string | null): string {
-  if (!value) return 'N/A';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-
 function formatShortDateTime(value?: string | null): string {
   if (!value) return 'N/A';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })}`;
+  });
 }
 
 function formatDateRange(start?: string | null, end?: string | null): string {
   if (!start && !end) return 'Open range';
-  if (!start || !end) return `${formatShortDateTime(start)} -> ${formatShortDateTime(end)}`;
-
+  if (!start || !end) return `${formatShortDateTime(start)} – ${formatShortDateTime(end)}`;
   const startDate = new Date(start);
   const endDate = new Date(end);
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return `${start} -> ${end}`;
-  }
-
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return `${start} – ${end}`;
   const sameDay =
     startDate.getFullYear() === endDate.getFullYear() &&
     startDate.getMonth() === endDate.getMonth() &&
     startDate.getDate() === endDate.getDate();
-
   if (sameDay) {
-    return `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    })} - ${endDate.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`;
+    return `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
+  return `${formatShortDateTime(start)} – ${formatShortDateTime(end)}`;
+}
 
-  return `${formatShortDateTime(start)} - ${formatShortDateTime(end)}`;
+function formatOccurrenceDate(value?: string | null): string {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
 }
 
 function getRecurringSeriesKey(event: EventRecord): string | null {
   const id = event.id ?? '';
   const match = id.match(/^(.*)_(\d{8}(T\d{6}Z)?)$/);
   if (!match) return null;
-
-  return [
-    match[1],
-    event.summary ?? '',
-    event.location ?? '',
-    event.description ?? '',
-    event.status ?? '',
-  ].join('::');
+  return [match[1], event.summary ?? '', event.location ?? '', event.description ?? '', event.status ?? ''].join('::');
 }
 
 function buildEventGroups(events: EventRecord[]): EventGroup[] {
@@ -140,7 +132,6 @@ function buildEventGroups(events: EventRecord[]): EventGroup[] {
       singles.push(event);
       continue;
     }
-
     const current = seriesMap.get(seriesKey) ?? [];
     current.push(event);
     seriesMap.set(seriesKey, current);
@@ -170,7 +161,6 @@ function buildEventGroups(events: EventRecord[]): EventGroup[] {
       const bTime = b.start ? new Date(b.start).getTime() : 0;
       return aTime - bTime;
     });
-
     if (sorted.length === 1) {
       const event = sorted[0];
       groups.push({
@@ -188,7 +178,6 @@ function buildEventGroups(events: EventRecord[]): EventGroup[] {
       });
       continue;
     }
-
     const first = sorted[0];
     groups.push({
       type: 'series',
@@ -212,264 +201,297 @@ function buildEventGroups(events: EventRecord[]): EventGroup[] {
   });
 }
 
-function formatOccurrenceDate(value?: string | null): string {
-  if (!value) return 'N/A';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString();
-}
-
-function setStatus(message: string, variant: 'info' | 'error' | 'success' = 'info') {
-  statusEl.textContent = message;
-  statusEl.dataset.variant = variant;
-}
-
-function renderSummary(payload: StructuredPayload | null) {
-  if (!payload) {
-    summaryEl.innerHTML = '';
-    return;
-  }
-
-  const cards = [
-    ['Calendar', payload.calendarId ?? currentInput.calendarId ?? 'primary'],
-    ['Events', String(payload.totalResults ?? 0)],
-    ['Order', payload.orderBy ?? currentInput.orderBy ?? 'startTime'],
-    ['Range', formatDateRange(payload.timeMin ?? null, payload.timeMax ?? null)],
-  ];
-
-  summaryEl.innerHTML = cards
-    .map(
-      ([label, value]) => `
-        <article class="summary-card">
-          <p class="summary-label">${escapeHtml(label)}</p>
-          <p class="summary-value">${escapeHtml(value)}</p>
-        </article>
-      `
-    )
-    .join('');
-}
-
-function renderEvents(payload: StructuredPayload | null) {
-  const events = payload?.events ?? [];
-  const groups = buildEventGroups(events);
-
-  if (groups.length === 0) {
-    eventsEl.innerHTML = `
-      <article class="empty-state">
-        <h2>No events found</h2>
-        <p>Try another time window or calendar.</p>
-      </article>
-    `;
-    return;
-  }
-
-  eventsEl.innerHTML = groups
-    .map((group) => {
-      if (group.type === 'series') {
-        const previewDates = group.occurrences.slice(0, 4).map((event) => formatOccurrenceDate(event.start));
-        const remaining = group.occurrences.length - previewDates.length;
-        return `
-        <article class="event-card">
-          <div class="event-main">
-            <p class="event-time">${escapeHtml(formatDateRange(group.start, group.end))}</p>
-            <h2>${escapeHtml(group.summary)}</h2>
-            <p class="event-meta">Status: ${escapeHtml(group.status ?? 'unknown')}</p>
-            <p class="event-meta">Recurring event with ${group.occurrences.length} occurrences shown as one card</p>
-            ${group.location ? `<p class="event-meta">Location: ${escapeHtml(group.location)}</p>` : ''}
-            ${group.description ? `<p class="event-description">${escapeHtml(group.description)}</p>` : ''}
-            <div class="occurrence-list">
-              ${previewDates.map((date) => `<span class="occurrence-chip">${escapeHtml(date)}</span>`).join('')}
-              ${remaining > 0 ? `<span class="occurrence-chip">+${remaining} more</span>` : ''}
-            </div>
-          </div>
-          <div class="event-side">
-            ${group.htmlLink ? `<a href="${escapeHtml(group.htmlLink)}" target="_blank" rel="noreferrer">Open in Google Calendar</a>` : ''}
-            <p class="event-id">Series ID: ${escapeHtml(group.representativeId ?? 'N/A')}</p>
-          </div>
-        </article>
-      `;
+function getTheme() {
+  return isDarkTheme
+    ? {
+        title: '#f5f5f5',
+        text: '#d4d4d8',
+        muted: '#a1a1aa',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(249, 168, 212, 0.12), transparent 36%), linear-gradient(180deg, #0f172a 0%, #1a0f17 100%)',
+        panelBg: 'rgba(24, 24, 27, 0.94)',
+        panelBorder: 'rgba(249, 168, 212, 0.12)',
+        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
+        accent: '#f9a8d4',
+        chipBg: '#500724',
+        chipText: '#f9a8d4',
+        headText: '#94a3b8',
+        rowBorder: 'rgba(249, 168, 212, 0.1)',
+        link: '#fbcfe8',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
+        timeBg: 'rgba(249, 168, 212, 0.15)',
+        timeText: '#f9a8d4',
+        occurrenceBg: '#500724',
+        occurrenceText: '#f9a8d4',
       }
+    : {
+        title: '#2d0a1a',
+        text: '#5b6471',
+        muted: '#667085',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(253, 242, 248, 0.85), transparent 35%), linear-gradient(180deg, #fff5f8 0%, #fdf2f8 100%)',
+        panelBg: 'rgba(255,255,255,0.93)',
+        panelBorder: 'rgba(219, 39, 119, 0.1)',
+        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
+        accent: '#db2777',
+        chipBg: '#fdf2f8',
+        chipText: '#db2777',
+        headText: '#667085',
+        rowBorder: 'rgba(219, 39, 119, 0.07)',
+        link: '#831843',
+        buttonBg: '#2d0a1a',
+        buttonText: '#ffffff',
+        timeBg: '#fce7f3',
+        timeText: '#be185d',
+        occurrenceBg: '#fce7f3',
+        occurrenceText: '#9d174d',
+      };
+}
 
-      const event = group.occurrences[0];
-      return `
-        <article class="event-card">
-          <div class="event-main">
-            <p class="event-time">${escapeHtml(formatDateRange(event.start, event.end))}</p>
-            <h2>${escapeHtml(event.summary ?? 'Untitled event')}</h2>
-            <p class="event-meta">Status: ${escapeHtml(event.status ?? 'unknown')}</p>
-            ${event.location ? `<p class="event-meta">Location: ${escapeHtml(event.location)}</p>` : ''}
-            ${event.description ? `<p class="event-description">${escapeHtml(event.description)}</p>` : ''}
-          </div>
-          <div class="event-side">
-            ${event.htmlLink ? `<a href="${escapeHtml(event.htmlLink)}" target="_blank" rel="noreferrer">Open in Google Calendar</a>` : ''}
-            <p class="event-id">ID: ${escapeHtml(event.id ?? 'N/A')}</p>
-          </div>
-        </article>
-      `
-    })
+function render(payload: StructuredPayload) {
+  currentPayload = payload;
+  const events = payload.events ?? [];
+  const groups = buildEventGroups(events);
+  const t = getTheme();
+
+  const chips = [
+    `<span class="chip">Calendar: ${escapeHtml(payload.calendarId ?? 'primary')}</span>`,
+    `<span class="chip">Events: ${escapeHtml(String(payload.totalResults ?? events.length))}</span>`,
+    payload.timeMin ? `<span class="chip">From: ${escapeHtml(formatShortDateTime(payload.timeMin))}</span>` : '',
+    payload.timeMax ? `<span class="chip">To: ${escapeHtml(formatShortDateTime(payload.timeMax))}</span>` : '',
+  ]
+    .filter(Boolean)
     .join('');
+
+  const eventsHtml =
+    groups.length === 0
+      ? '<div class="empty">No events found in this time window.</div>'
+      : groups
+          .map((group) => {
+            if (group.type === 'series') {
+              const previewDates = group.occurrences.slice(0, 4).map((event) => formatOccurrenceDate(event.start));
+              const remaining = group.occurrences.length - previewDates.length;
+              return `
+                <div class="event-row">
+                  <div class="event-body">
+                    <div class="event-time-row">
+                      <span class="event-time">${escapeHtml(formatDateRange(group.start, group.end))}</span>
+                      <span class="series-badge">Recurring · ${group.occurrences.length} occurrences</span>
+                    </div>
+                    <div class="event-title">${escapeHtml(group.summary)}</div>
+                    ${group.location ? `<div class="event-meta">📍 ${escapeHtml(group.location)}</div>` : ''}
+                    ${group.status ? `<div class="event-meta">Status: ${escapeHtml(group.status)}</div>` : ''}
+                    ${group.description ? `<div class="event-desc">${escapeHtml(group.description)}</div>` : ''}
+                    <div class="occurrence-chips">
+                      ${previewDates.map((d) => `<span class="occurrence-chip">${escapeHtml(d)}</span>`).join('')}
+                      ${remaining > 0 ? `<span class="occurrence-chip">+${remaining} more</span>` : ''}
+                    </div>
+                  </div>
+                  <div class="event-actions">
+                    ${group.htmlLink ? `<a class="event-link" href="${escapeHtml(group.htmlLink)}" target="_blank" rel="noreferrer">Open in Calendar</a>` : ''}
+                  </div>
+                </div>
+              `;
+            }
+            const event = group.occurrences[0];
+            return `
+              <div class="event-row">
+                <div class="event-body">
+                  <div class="event-time-row">
+                    <span class="event-time">${escapeHtml(formatDateRange(event.start, event.end))}</span>
+                  </div>
+                  <div class="event-title">${escapeHtml(event.summary ?? 'Untitled event')}</div>
+                  ${event.location ? `<div class="event-meta">📍 ${escapeHtml(event.location)}</div>` : ''}
+                  ${event.status ? `<div class="event-meta">Status: ${escapeHtml(event.status)}</div>` : ''}
+                  ${event.description ? `<div class="event-desc">${escapeHtml(event.description)}</div>` : ''}
+                </div>
+                <div class="event-actions">
+                  ${event.htmlLink ? `<a class="event-link" href="${escapeHtml(event.htmlLink)}" target="_blank" rel="noreferrer">Open in Calendar</a>` : ''}
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+
+  root.innerHTML = `
+    <style>
+      html, body { margin: 0; padding: 0; min-height: 0; }
+      body { font-family: Georgia, serif; color: ${t.title}; background: transparent; padding: 0; }
+      .shell {
+        display: grid;
+        gap: 12px;
+        margin: 10px;
+        padding: 10px;
+        border-radius: 22px;
+        background: ${t.shellBg};
+      }
+      .hero, .panel {
+        background: ${t.panelBg};
+        border: 1px solid ${t.panelBorder};
+        border-radius: 18px;
+        box-shadow: ${t.shadow};
+      }
+      .hero { padding: 12px; display: grid; gap: 8px; }
+      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${t.accent}; }
+      h1, p { margin: 0; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${t.accent}; }
+      .toolbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: nowrap;
+      }
+      .toolbar-main { min-width: 0; display: grid; gap: 6px; }
+      .toolbar-actions { display: flex; align-items: flex-end; flex: 0 0 auto; margin-left: auto; }
+      .subhead { color: ${t.text}; font-size: 13px; line-height: 1.4; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: ${t.chipBg};
+        color: ${t.chipText};
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font: inherit;
+        background: ${t.buttonBg};
+        color: ${t.buttonText};
+        cursor: pointer;
+        min-width: 66px;
+        font-size: 11px;
+      }
+      button:disabled { opacity: 0.65; cursor: default; }
+      @media (max-width: 640px) {
+        .toolbar { flex-wrap: wrap; }
+        .toolbar-actions { width: 100%; justify-content: flex-end; margin-left: 0; }
+      }
+      .panel { overflow: hidden; }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        flex-wrap: wrap;
+      }
+      .label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; color: ${t.accent}; }
+      .event-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        padding: 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        align-items: start;
+      }
+      .event-row:last-child { border-bottom: 0; }
+      .event-time-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+      .event-time {
+        display: inline-block;
+        background: ${t.timeBg};
+        color: ${t.timeText};
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .series-badge { font-size: 11px; color: ${t.muted}; }
+      .event-title { font-size: 15px; font-weight: 700; color: ${t.title}; line-height: 1.3; margin-bottom: 4px; }
+      .event-meta { font-size: 12px; color: ${t.text}; margin-top: 3px; }
+      .event-desc { font-size: 12px; color: ${t.text}; margin-top: 6px; line-height: 1.5; }
+      .occurrence-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+      .occurrence-chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: ${t.occurrenceBg};
+        color: ${t.occurrenceText};
+        padding: 3px 8px;
+        font-size: 11px;
+      }
+      .event-actions { display: grid; gap: 6px; align-content: start; }
+      .event-link {
+        display: inline-flex;
+        align-items: center;
+        color: ${t.link};
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .event-link:hover { text-decoration: underline; }
+      .empty { padding: 18px 12px; color: ${t.text}; font-size: 14px; }
+      .note { color: ${t.muted}; font-size: 11px; line-height: 1.45; }
+    </style>
+    <div class="shell">
+      <section class="hero">
+        <p class="eyebrow">Google Calendar</p>
+        <h1>Calendar Events</h1>
+        <div class="toolbar">
+          <div class="toolbar-main">
+            <p class="subhead">Scheduled events, recurring series, and time blocks.</p>
+            <div class="chips">${chips}</div>
+          </div>
+          <div class="toolbar-actions">
+            <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <div class="label">Events</div>
+        </div>
+        ${eventsHtml}
+      </section>
+      <p class="note">Open in Calendar links may require right-click if Claude blocks direct navigation.</p>
+    </div>
+  `;
+
+  bindRefresh();
+  notifySizeChanged();
 }
 
-function renderPayload(payload: StructuredPayload | null) {
-  renderSummary(payload);
-  renderEvents(payload);
-}
-
-function applyHostContext() {
-  const hostContext = app.getHostContext();
-  if (!hostContext) return;
-  if (hostContext.theme) applyDocumentTheme(hostContext.theme);
-  if (hostContext.styles?.variables) applyHostStyleVariables(hostContext.styles.variables);
-  if (hostContext.styles?.css?.fonts) applyHostFonts(hostContext.styles.css.fonts);
+function bindRefresh() {
+  root.querySelector<HTMLButtonElement>('#refresh')?.addEventListener('click', async () => {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    const button = root.querySelector<HTMLButtonElement>('#refresh');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Refreshing...';
+    }
+    try {
+      const result = await app.callServerTool({ name: 'gcalendarListEvents', arguments: currentArgs });
+      render((result.structuredContent ?? {}) as StructuredPayload);
+    } finally {
+      isRefreshing = false;
+      const nextButton = root.querySelector<HTMLButtonElement>('#refresh');
+      if (nextButton) {
+        nextButton.disabled = false;
+        nextButton.textContent = 'Refresh';
+      }
+      notifySizeChanged();
+    }
+  });
 }
 
 app.ontoolinput = ({ arguments: args }) => {
-  currentInput = {
-    calendarId: typeof args?.calendarId === 'string' ? args.calendarId : 'primary',
-    timeMin: typeof args?.timeMin === 'string' ? args.timeMin : undefined,
-    timeMax: typeof args?.timeMax === 'string' ? args.timeMax : undefined,
-    maxResults: typeof args?.maxResults === 'number' ? args.maxResults : undefined,
-    orderBy: args?.orderBy === 'updated' ? 'updated' : 'startTime',
-  };
-
-  subhead.textContent = `Calendar: ${currentInput.calendarId ?? 'primary'}`;
-  setStatus('Loading events...', 'info');
+  currentArgs = args ?? {};
 };
 
 app.ontoolresult = (result) => {
-  if (result.isError) {
-    const errorText = result.content?.find((item) => item.type === 'text' && 'text' in item)?.text ?? 'Tool execution failed.';
-    setStatus(errorText, 'error');
-    return;
-  }
-
-  const payload = (result.structuredContent ?? null) as StructuredPayload | null;
-  renderPayload(payload);
-  setStatus(`Loaded ${payload?.totalResults ?? 0} event(s).`, 'success');
+  render((result.structuredContent ?? {}) as StructuredPayload);
 };
 
-app.onhostcontextchanged = () => applyHostContext();
-
-refreshButton.addEventListener('click', async () => {
-  refreshButton.disabled = true;
-  setStatus('Refreshing events...', 'info');
-
-  try {
-    const result = await app.callServerTool({
-      name: 'gcalendarListEvents',
-      arguments: currentInput,
-    });
-
-    if (result.isError) {
-      const errorText = result.content?.find((item) => item.type === 'text' && 'text' in item)?.text ?? 'Refresh failed.';
-      setStatus(errorText, 'error');
-      return;
-    }
-
-    renderPayload((result.structuredContent ?? null) as StructuredPayload | null);
-    setStatus(`Loaded ${((result.structuredContent as StructuredPayload | null)?.totalResults) ?? 0} event(s).`, 'success');
-  } catch (error) {
-    setStatus(error instanceof Error ? error.message : 'Refresh failed.', 'error');
-  } finally {
-    refreshButton.disabled = false;
-  }
-});
-
-const styles = document.createElement('style');
-styles.textContent = `
-  :root {
-    color-scheme: light dark;
-    --surface: color-mix(in srgb, var(--color-background-secondary, #eef3f9) 85%, white);
-    --surface-strong: color-mix(in srgb, var(--color-background-primary, #ffffff) 92%, black);
-    --border: var(--color-border-secondary, rgba(15, 23, 42, 0.12));
-    --accent: var(--color-text-info, #0f766e);
-    --danger: var(--color-text-danger, #b91c1c);
-    --success: var(--color-text-success, #166534);
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    padding: 24px;
-    font-family: var(--font-sans, "Iowan Old Style", "Palatino Linotype", serif);
-    background: radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 28%), linear-gradient(180deg, var(--color-background-primary, #ffffff), var(--surface));
-    color: var(--color-text-primary, #0f172a);
-  }
-  #app { display: grid; gap: 16px; }
-  .hero, .status, .summary-card, .event-card, .empty-state {
-    background: var(--surface-strong);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
-  }
-  .hero {
-    padding: 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    gap: 16px;
-  }
-  .eyebrow {
-    margin: 0 0 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 12px;
-    color: var(--accent);
-  }
-  h1, h2, p { margin: 0; }
-  h1 { font-size: 54px; line-height: 0.95; margin-bottom: 10px; }
-  #subhead { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 80%, transparent); font-size: 18px; }
-  .status { padding: 16px 20px; font-size: 16px; }
-  .status[data-variant="error"] { color: var(--danger); }
-  .status[data-variant="success"] { color: var(--success); }
-  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-  .summary-card { padding: 16px 18px; }
-  .summary-label { text-transform: uppercase; letter-spacing: 0.16em; font-size: 12px; color: color-mix(in srgb, var(--color-text-primary, #0f172a) 55%, transparent); margin-bottom: 10px; }
-  .summary-value { font-size: 20px; line-height: 1.3; }
-  .events-list { display: grid; gap: 12px; }
-  .event-card { padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 18px; }
-  .event-time { color: var(--accent); font-size: 14px; margin-bottom: 10px; }
-  .event-main h2 { font-size: 28px; margin-bottom: 10px; }
-  .event-meta { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 75%, transparent); margin-bottom: 6px; }
-  .event-description { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 70%, transparent); line-height: 1.55; margin-top: 10px; }
-  .occurrence-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-  .occurrence-chip {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
-    background: color-mix(in srgb, var(--accent) 10%, white);
-    color: color-mix(in srgb, var(--color-text-primary, #0f172a) 80%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 18%, white);
-  }
-  .event-side { min-width: 220px; display: grid; align-content: start; gap: 12px; }
-  .event-side a { color: var(--accent); text-decoration: none; font-weight: 600; }
-  .event-id { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 60%, transparent); word-break: break-all; font-size: 13px; }
-  .empty-state { padding: 24px; }
-  button {
-    border: 0;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 88%, black);
-    color: white;
-    font: inherit;
-    padding: 12px 18px;
-    cursor: pointer;
-  }
-  button:disabled { opacity: 0.65; cursor: default; }
-  @media (max-width: 900px) {
-    body { padding: 16px; }
-    h1 { font-size: 40px; }
-    .event-card { grid-template-columns: 1fr; }
-    .event-side { min-width: 0; }
-  }
-`;
-document.head.appendChild(styles);
-
-async function connect() {
-  setStatus('Connecting to host...', 'info');
-  await app.connect(new PostMessageTransport(window.parent, window.parent));
-  applyHostContext();
-  setStatus('Connected. Waiting for tool result...', 'info');
-}
-
-void connect();
+app.onhostcontextchanged = () => {
+  applyHost();
+  if (currentPayload.events) render(currentPayload);
+};
+app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);

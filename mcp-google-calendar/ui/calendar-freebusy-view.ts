@@ -12,37 +12,48 @@ type CalendarBusySummary = {
   errors?: unknown;
 };
 
-type ToolInput = {
-  calendarIds?: string[];
-  timeMin?: string;
-  timeMax?: string;
-  timeZone?: string;
-};
-
 type StructuredPayload = {
+  kind?: string;
   timeMin?: string;
   timeMax?: string;
   timeZone?: string;
   calendars?: CalendarBusySummary[];
 };
 
-const subhead = document.querySelector<HTMLParagraphElement>('#subhead');
-const statusEl = document.querySelector<HTMLElement>('#status');
-const summaryEl = document.querySelector<HTMLElement>('#summary');
-const lanesEl = document.querySelector<HTMLElement>('#lanes');
-const refreshButton = document.querySelector<HTMLButtonElement>('#refresh');
+const root = document.querySelector<HTMLDivElement>('#app');
+if (!root) throw new Error('Missing root element');
 
-if (!subhead || !statusEl || !summaryEl || !lanesEl || !refreshButton) {
-  throw new Error('Missing required DOM elements for calendar freebusy view.');
+const app = new App({ name: 'calendar-freebusy-view', version: '0.1.0' }, {}, { autoResize: true });
+let currentArgs: Record<string, unknown> = {};
+let currentPayload: StructuredPayload = {};
+let isRefreshing = false;
+let isDarkTheme = false;
+
+function detectDarkTheme(): boolean {
+  const context = app.getHostContext();
+  const theme = context?.theme as { mode?: string; appearance?: string; colorScheme?: string } | undefined;
+  const mode = (theme?.mode ?? theme?.appearance ?? theme?.colorScheme ?? '').toLowerCase();
+  if (mode.includes('dark')) return true;
+  if (mode.includes('light')) return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }
 
-const app = new App(
-  { name: 'google-calendar-freebusy-view', version: '0.1.0' },
-  { tools: { listChanged: false } },
-  { autoResize: true }
-);
+function applyHost() {
+  const context = app.getHostContext();
+  if (context?.theme) applyDocumentTheme(context.theme);
+  if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
+  if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+  isDarkTheme = detectDarkTheme();
+}
 
-let currentInput: ToolInput = {};
+function notifySizeChanged() {
+  requestAnimationFrame(() => {
+    void app.sendSizeChanged({
+      width: Math.ceil(document.documentElement.scrollWidth),
+      height: Math.ceil(document.documentElement.scrollHeight),
+    });
+  });
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -53,35 +64,24 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function formatDate(value?: string | null): string {
+function formatShortDateTime(value?: string | null): string {
   if (!value) return 'N/A';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-
-function getCalendarDisplayName(calendarId: string, index: number): string {
-  if (calendarId === 'primary') return 'Primary Calendar';
-  if (calendarId.includes('@group.calendar.google.com')) return `Shared Calendar ${index + 1}`;
-  if (calendarId.includes('@')) return calendarId.split('@')[0] || `Calendar ${index + 1}`;
-  return calendarId;
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function formatBusyRange(start?: string | null, end?: string | null): { primary: string; secondary?: string } {
-  if (!start || !end) {
-    return { primary: `${formatDate(start)} - ${formatDate(end)}` };
-  }
-
+  if (!start || !end) return { primary: `${formatShortDateTime(start)} – ${formatShortDateTime(end)}` };
   const startDate = new Date(start);
   const endDate = new Date(end);
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return { primary: `${start} - ${end}` };
-  }
-
-  const sameDay =
-    startDate.getFullYear() === endDate.getFullYear() &&
-    startDate.getMonth() === endDate.getMonth() &&
-    startDate.getDate() === endDate.getDate();
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return { primary: `${start} – ${end}` };
 
   const durationMinutes = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
   const hours = Math.floor(durationMinutes / 60);
@@ -93,282 +93,291 @@ function formatBusyRange(start?: string | null, end?: string | null): { primary:
         : `${hours} hr`
       : `${minutes} min`;
 
+  const sameDay =
+    startDate.getFullYear() === endDate.getFullYear() &&
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getDate() === endDate.getDate();
+
   if (sameDay) {
     return {
-      primary: `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })} - ${endDate.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`,
+      primary: `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       secondary: durationLabel,
     };
   }
-
   return {
-    primary: `${startDate.toLocaleDateString()} ${startDate.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    })} - ${endDate.toLocaleDateString()} ${endDate.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`,
+    primary: `${formatShortDateTime(start)} – ${formatShortDateTime(end)}`,
     secondary: durationLabel,
   };
 }
 
-function setStatus(message: string, variant: 'info' | 'error' | 'success' = 'info') {
-  statusEl.textContent = message;
-  statusEl.dataset.variant = variant;
+function getCalendarDisplayName(calendarId: string, index: number): string {
+  if (calendarId === 'primary') return 'Primary Calendar';
+  if (calendarId.includes('@group.calendar.google.com')) return `Shared Calendar ${index + 1}`;
+  if (calendarId.includes('@')) return calendarId.split('@')[0] || `Calendar ${index + 1}`;
+  return calendarId;
 }
 
-function applyHostContext() {
-  const hostContext = app.getHostContext();
-  if (!hostContext) return;
-  if (hostContext.theme) applyDocumentTheme(hostContext.theme);
-  if (hostContext.styles?.variables) applyHostStyleVariables(hostContext.styles.variables);
-  if (hostContext.styles?.css?.fonts) applyHostFonts(hostContext.styles.css.fonts);
+function getTheme() {
+  return isDarkTheme
+    ? {
+        title: '#f5f5f5',
+        text: '#d4d4d8',
+        muted: '#a1a1aa',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(249, 168, 212, 0.12), transparent 36%), linear-gradient(180deg, #0f172a 0%, #1a0f17 100%)',
+        panelBg: 'rgba(24, 24, 27, 0.94)',
+        panelBorder: 'rgba(249, 168, 212, 0.12)',
+        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
+        accent: '#f9a8d4',
+        chipBg: '#500724',
+        chipText: '#f9a8d4',
+        headText: '#94a3b8',
+        rowBorder: 'rgba(249, 168, 212, 0.1)',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
+        busyBg: 'rgba(249, 168, 212, 0.1)',
+        busyBorder: 'rgba(249, 168, 212, 0.2)',
+        busyLabel: '#f9a8d4',
+        busyTime: '#fbcfe8',
+      }
+    : {
+        title: '#2d0a1a',
+        text: '#5b6471',
+        muted: '#667085',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(253, 242, 248, 0.85), transparent 35%), linear-gradient(180deg, #fff5f8 0%, #fdf2f8 100%)',
+        panelBg: 'rgba(255,255,255,0.93)',
+        panelBorder: 'rgba(219, 39, 119, 0.1)',
+        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
+        accent: '#db2777',
+        chipBg: '#fdf2f8',
+        chipText: '#db2777',
+        headText: '#667085',
+        rowBorder: 'rgba(219, 39, 119, 0.07)',
+        buttonBg: '#2d0a1a',
+        buttonText: '#ffffff',
+        busyBg: 'linear-gradient(180deg, rgba(252, 231, 243, 0.7), rgba(252, 231, 243, 0.4))',
+        busyBorder: 'rgba(219, 39, 119, 0.18)',
+        busyLabel: '#be185d',
+        busyTime: '#9d174d',
+      };
 }
 
-function renderSummary(payload: StructuredPayload | null) {
-  const calendars = payload?.calendars ?? [];
-  const totalBusy = calendars.reduce((sum, item) => sum + (item.busyCount ?? 0), 0);
-  const cards = [
-    ['Calendars', String(calendars.length)],
-    ['Busy Slots', String(totalBusy)],
-    ['Timezone', payload?.timeZone ?? currentInput.timeZone ?? 'UTC'],
-    ['Range', payload?.timeMin && payload?.timeMax ? `${payload.timeMin} -> ${payload.timeMax}` : 'Not set'],
-  ];
+function render(payload: StructuredPayload) {
+  currentPayload = payload;
+  const calendars = payload.calendars ?? [];
+  const totalBusy = calendars.reduce((sum, cal) => sum + (cal.busyCount ?? 0), 0);
+  const t = getTheme();
 
-  summaryEl.innerHTML = cards
-    .map(
-      ([label, value]) => `
-        <article class="summary-card">
-          <p class="summary-label">${escapeHtml(label)}</p>
-          <p class="summary-value">${escapeHtml(value)}</p>
-        </article>
-      `
-    )
+  const chips = [
+    `<span class="chip">Calendars: ${escapeHtml(String(calendars.length))}</span>`,
+    `<span class="chip">Busy slots: ${escapeHtml(String(totalBusy))}</span>`,
+    payload.timeZone ? `<span class="chip">Timezone: ${escapeHtml(payload.timeZone)}</span>` : '',
+    payload.timeMin ? `<span class="chip">From: ${escapeHtml(formatShortDateTime(payload.timeMin))}</span>` : '',
+    payload.timeMax ? `<span class="chip">To: ${escapeHtml(formatShortDateTime(payload.timeMax))}</span>` : '',
+  ]
+    .filter(Boolean)
     .join('');
-}
 
-function renderLanes(payload: StructuredPayload | null) {
-  const calendars = payload?.calendars ?? [];
-
-  if (calendars.length === 0) {
-    lanesEl.innerHTML = `
-      <article class="empty-state">
-        <h2>No calendars returned</h2>
-        <p>Try another time window or calendar selection.</p>
-      </article>
-    `;
-    return;
-  }
-
-  lanesEl.innerHTML = calendars
-    .map(
-      (calendar, index) => `
-        <article class="lane-card">
-          <div class="lane-header">
-            <div>
-              <p class="lane-label">Calendar</p>
-              <h2>${escapeHtml(getCalendarDisplayName(calendar.calendarId, index))}</h2>
-              <p class="lane-id">${escapeHtml(calendar.calendarId)}</p>
+  const lanesHtml =
+    calendars.length === 0
+      ? '<div class="empty">No calendars returned.</div>'
+      : calendars
+          .map(
+            (calendar, index) => `
+          <div class="lane-row">
+            <div class="lane-head">
+              <div class="lane-info">
+                <div class="lane-label">Calendar</div>
+                <div class="lane-title">${escapeHtml(getCalendarDisplayName(calendar.calendarId, index))}</div>
+                <div class="lane-id">${escapeHtml(calendar.calendarId)}</div>
+              </div>
+              <div class="lane-count">${escapeHtml(String(calendar.busyCount))} block(s)</div>
             </div>
-            <p class="lane-count">${calendar.busyCount} scheduled block(s)</p>
+            ${
+              calendar.busy.length === 0
+                ? '<div class="lane-empty">No scheduled events in the selected time range.</div>'
+                : `<div class="busy-grid">
+                    ${calendar.busy
+                      .map((slot) => {
+                        const range = formatBusyRange(slot.start, slot.end);
+                        return `
+                          <div class="busy-block">
+                            <div class="busy-label">Busy</div>
+                            <div class="busy-time">${escapeHtml(range.primary)}</div>
+                            ${range.secondary ? `<div class="busy-meta">${escapeHtml(range.secondary)}</div>` : ''}
+                          </div>
+                        `;
+                      })
+                      .join('')}
+                  </div>`
+            }
           </div>
-          ${
-            calendar.busy.length === 0
-              ? '<p class="lane-empty">No scheduled events in the selected time range.</p>'
-              : `<div class="busy-list">
-                  ${calendar.busy
-                    .map((slot) => {
-                      const range = formatBusyRange(slot.start, slot.end);
-                      return `
-                        <div class="busy-block">
-                          <p class="busy-label">Busy</p>
-                          <p class="busy-time">${escapeHtml(range.primary)}</p>
-                          ${range.secondary ? `<p class="busy-meta">${escapeHtml(range.secondary)}</p>` : ''}
-                        </div>
-                      `
-                    })
-                    .join('')}
-                </div>`
-          }
-        </article>
-      `
-    )
-    .join('');
+        `,
+          )
+          .join('');
+
+  root.innerHTML = `
+    <style>
+      html, body { margin: 0; padding: 0; min-height: 0; }
+      body { font-family: Georgia, serif; color: ${t.title}; background: transparent; padding: 0; }
+      .shell {
+        display: grid;
+        gap: 12px;
+        margin: 10px;
+        padding: 10px;
+        border-radius: 22px;
+        background: ${t.shellBg};
+      }
+      .hero, .panel {
+        background: ${t.panelBg};
+        border: 1px solid ${t.panelBorder};
+        border-radius: 18px;
+        box-shadow: ${t.shadow};
+      }
+      .hero { padding: 12px; display: grid; gap: 8px; }
+      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${t.accent}; }
+      h1, p { margin: 0; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${t.accent}; }
+      .toolbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: nowrap;
+      }
+      .toolbar-main { min-width: 0; display: grid; gap: 6px; }
+      .toolbar-actions { display: flex; align-items: flex-end; flex: 0 0 auto; margin-left: auto; }
+      .subhead { color: ${t.text}; font-size: 13px; line-height: 1.4; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: ${t.chipBg};
+        color: ${t.chipText};
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font: inherit;
+        background: ${t.buttonBg};
+        color: ${t.buttonText};
+        cursor: pointer;
+        min-width: 66px;
+        font-size: 11px;
+      }
+      button:disabled { opacity: 0.65; cursor: default; }
+      @media (max-width: 640px) {
+        .toolbar { flex-wrap: wrap; }
+        .toolbar-actions { width: 100%; justify-content: flex-end; margin-left: 0; }
+      }
+      .panel { overflow: hidden; }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        flex-wrap: wrap;
+      }
+      .label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; color: ${t.accent}; }
+      .lane-row {
+        padding: 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        display: grid;
+        gap: 10px;
+      }
+      .lane-row:last-child { border-bottom: 0; }
+      .lane-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+      .lane-label { text-transform: uppercase; letter-spacing: 0.13em; font-size: 11px; color: ${t.headText}; margin-bottom: 3px; }
+      .lane-title { font-size: 15px; font-weight: 700; color: ${t.title}; line-height: 1.3; }
+      .lane-id { font-size: 12px; color: ${t.muted}; margin-top: 2px; word-break: break-all; }
+      .lane-count { font-size: 12px; color: ${t.text}; white-space: nowrap; }
+      .lane-empty { font-size: 13px; color: ${t.text}; }
+      .busy-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+      .busy-block {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: ${t.busyBg};
+        border: 1px solid ${t.busyBorder};
+      }
+      .busy-label {
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 11px;
+        color: ${t.busyLabel};
+        margin-bottom: 6px;
+      }
+      .busy-time { font-size: 13px; font-weight: 600; color: ${t.busyTime}; line-height: 1.4; }
+      .busy-meta { font-size: 12px; color: ${t.text}; margin-top: 4px; }
+      .empty { padding: 18px 12px; color: ${t.text}; font-size: 14px; }
+    </style>
+    <div class="shell">
+      <section class="hero">
+        <p class="eyebrow">Google Calendar</p>
+        <h1>Free / Busy</h1>
+        <div class="toolbar">
+          <div class="toolbar-main">
+            <p class="subhead">Availability and scheduled time blocks across calendars.</p>
+            <div class="chips">${chips}</div>
+          </div>
+          <div class="toolbar-actions">
+            <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <div class="label">Calendar Lanes</div>
+        </div>
+        ${lanesHtml}
+      </section>
+    </div>
+  `;
+
+  bindRefresh();
+  notifySizeChanged();
 }
 
-function renderPayload(payload: StructuredPayload | null) {
-  renderSummary(payload);
-  renderLanes(payload);
+function bindRefresh() {
+  root.querySelector<HTMLButtonElement>('#refresh')?.addEventListener('click', async () => {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    const button = root.querySelector<HTMLButtonElement>('#refresh');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Refreshing...';
+    }
+    try {
+      const result = await app.callServerTool({ name: 'gcalendarGetFreeBusy', arguments: currentArgs });
+      render((result.structuredContent ?? {}) as StructuredPayload);
+    } finally {
+      isRefreshing = false;
+      const nextButton = root.querySelector<HTMLButtonElement>('#refresh');
+      if (nextButton) {
+        nextButton.disabled = false;
+        nextButton.textContent = 'Refresh';
+      }
+      notifySizeChanged();
+    }
+  });
 }
 
 app.ontoolinput = ({ arguments: args }) => {
-  currentInput = {
-    calendarIds: Array.isArray(args?.calendarIds) ? (args?.calendarIds.filter((value): value is string => typeof value === 'string')) : [],
-    timeMin: typeof args?.timeMin === 'string' ? args.timeMin : undefined,
-    timeMax: typeof args?.timeMax === 'string' ? args.timeMax : undefined,
-    timeZone: typeof args?.timeZone === 'string' ? args.timeZone : undefined,
-  };
-
-  subhead.textContent = `${currentInput.calendarIds?.length ?? 0} calendar(s) selected`;
-  setStatus('Loading free/busy data...', 'info');
+  currentArgs = args ?? {};
 };
 
 app.ontoolresult = (result) => {
-  if (result.isError) {
-    const errorText = result.content?.find((item) => item.type === 'text' && 'text' in item)?.text ?? 'Tool execution failed.';
-    setStatus(errorText, 'error');
-    return;
-  }
-
-  const payload = (result.structuredContent ?? null) as StructuredPayload | null;
-  renderPayload(payload);
-  setStatus(`Loaded ${(payload?.calendars ?? []).length} calendar lane(s).`, 'success');
+  render((result.structuredContent ?? {}) as StructuredPayload);
 };
 
-app.onhostcontextchanged = () => applyHostContext();
-
-refreshButton.addEventListener('click', async () => {
-  refreshButton.disabled = true;
-  setStatus('Refreshing free/busy data...', 'info');
-
-  try {
-    const result = await app.callServerTool({
-      name: 'gcalendarGetFreeBusy',
-      arguments: currentInput,
-    });
-
-    if (result.isError) {
-      const errorText = result.content?.find((item) => item.type === 'text' && 'text' in item)?.text ?? 'Refresh failed.';
-      setStatus(errorText, 'error');
-      return;
-    }
-
-    renderPayload((result.structuredContent ?? null) as StructuredPayload | null);
-    setStatus(`Loaded ${(((result.structuredContent as StructuredPayload | null)?.calendars) ?? []).length} calendar lane(s).`, 'success');
-  } catch (error) {
-    setStatus(error instanceof Error ? error.message : 'Refresh failed.', 'error');
-  } finally {
-    refreshButton.disabled = false;
-  }
-});
-
-const styles = document.createElement('style');
-styles.textContent = `
-  :root {
-    color-scheme: light dark;
-    --surface: color-mix(in srgb, var(--color-background-secondary, #eef3f9) 88%, white);
-    --surface-strong: color-mix(in srgb, var(--color-background-primary, #ffffff) 95%, black);
-    --border: var(--color-border-secondary, rgba(15, 23, 42, 0.12));
-    --accent: #0f766e;
-    --busy: #f59e0b;
-    --busy-strong: #d97706;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    padding: 24px;
-    font-family: var(--font-sans, "Avenir Next", "Segoe UI", sans-serif);
-    background: linear-gradient(180deg, var(--color-background-primary, #ffffff), var(--surface));
-    color: var(--color-text-primary, #0f172a);
-  }
-  #app { display: grid; gap: 16px; }
-  .hero, .status, .summary-card, .lane-card, .empty-state {
-    background: var(--surface-strong);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
-  }
-  .hero {
-    padding: 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    gap: 16px;
-  }
-  .eyebrow {
-    margin: 0 0 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 12px;
-    color: var(--accent);
-  }
-  h1, h2, p { margin: 0; }
-  h1 { font-size: 48px; line-height: 0.98; margin-bottom: 10px; }
-  #subhead { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 80%, transparent); font-size: 18px; }
-  .status { padding: 16px 20px; }
-  .status[data-variant="error"] { color: var(--color-text-danger, #b91c1c); }
-  .status[data-variant="success"] { color: var(--color-text-success, #166534); }
-  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-  .summary-card { padding: 16px 18px; }
-  .summary-label { text-transform: uppercase; letter-spacing: 0.16em; font-size: 12px; color: color-mix(in srgb, var(--color-text-primary, #0f172a) 55%, transparent); margin-bottom: 10px; }
-  .summary-value { font-size: 20px; line-height: 1.3; }
-  .lanes { display: grid; gap: 12px; }
-  .lane-card { padding: 18px 20px; display: grid; gap: 16px; }
-  .lane-header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
-  .lane-label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px; color: color-mix(in srgb, var(--color-text-primary, #0f172a) 55%, transparent); margin-bottom: 8px; }
-  .lane-header h2 { font-size: 24px; }
-  .lane-id {
-    margin-top: 6px;
-    color: color-mix(in srgb, var(--color-text-primary, #0f172a) 58%, transparent);
-    font-size: 13px;
-    word-break: break-all;
-  }
-  .lane-count { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 70%, transparent); }
-  .busy-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-  .busy-block {
-    padding: 14px 16px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--busy) 16%, white), color-mix(in srgb, var(--busy) 10%, white));
-    border: 1px solid color-mix(in srgb, var(--busy-strong) 24%, white);
-  }
-  .busy-label {
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    font-size: 11px;
-    color: var(--busy-strong);
-    margin-bottom: 10px;
-  }
-  .busy-time {
-    font-weight: 600;
-    line-height: 1.45;
-    color: var(--busy-strong);
-  }
-  .busy-meta {
-    margin-top: 6px;
-    color: color-mix(in srgb, var(--color-text-primary, #0f172a) 65%, transparent);
-    font-size: 13px;
-  }
-  .lane-empty { color: color-mix(in srgb, var(--color-text-primary, #0f172a) 65%, transparent); }
-  .empty-state { padding: 24px; }
-  button {
-    border: 0;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 88%, black);
-    color: white;
-    font: inherit;
-    padding: 12px 18px;
-    cursor: pointer;
-  }
-  button:disabled { opacity: 0.65; cursor: default; }
-  @media (max-width: 900px) {
-    body { padding: 16px; }
-    h1 { font-size: 38px; }
-    .lane-header { display: grid; }
-  }
-`;
-document.head.appendChild(styles);
-
-async function connect() {
-  setStatus('Connecting to host...', 'info');
-  await app.connect(new PostMessageTransport(window.parent, window.parent));
-  applyHostContext();
-  setStatus('Connected. Waiting for tool result...', 'info');
-}
-
-void connect();
+app.onhostcontextchanged = () => {
+  applyHost();
+  if (currentPayload.calendars) render(currentPayload);
+};
+app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
