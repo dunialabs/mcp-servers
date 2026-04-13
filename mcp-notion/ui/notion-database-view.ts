@@ -103,6 +103,8 @@ function render(payload: DatabasePayload) {
         chipText: '#ddd6fe',
         headText: '#a1a1aa',
         rowBorder: 'rgba(244,244,245,0.08)',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
       }
     : {
         text: '#18212f',
@@ -116,6 +118,8 @@ function render(payload: DatabasePayload) {
         chipText: '#6d28d9',
         headText: '#667085',
         rowBorder: 'rgba(24,33,47,0.06)',
+        buttonBg: '#18212f',
+        buttonText: '#ffffff',
       };
   root.innerHTML = `
     <style>
@@ -133,7 +137,7 @@ function render(payload: DatabasePayload) {
       .subhead { color:${theme.muted}; font-size:13px; line-height:1.4; }
       .chips { display:flex; flex-wrap:wrap; gap:6px; }
       .chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; background:${theme.chipBg}; color:${theme.chipText}; padding:4px 8px; font-size:11px; }
-      button { border:0; border-radius:999px; padding:4px 10px; font:inherit; background:#18212f; color:white; cursor:pointer; min-width:66px; font-size:11px; }
+      button { border:0; border-radius:999px; padding:4px 10px; font:inherit; background:${theme.buttonBg}; color:${theme.buttonText}; cursor:pointer; min-width:66px; font-size:11px; }
       button:disabled { opacity:.65; cursor:default; }
       @media (max-width: 640px) { .toolbar { flex-wrap:wrap; } .toolbar-actions { width:100%; justify-content:flex-end; margin-left:0; } }
       .panel { overflow:hidden; }

@@ -101,7 +101,9 @@ function render(payload: PagePayload) {
         key: '#a1a1aa',
         value: '#d1d5db',
         rowBorder: 'rgba(244,244,245,0.08)',
-        link: '#86efac',
+        link: '#ddd6fe',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
       }
     : {
         text: '#18212f',
@@ -116,7 +118,9 @@ function render(payload: PagePayload) {
         key: '#667085',
         value: '#273244',
         rowBorder: 'rgba(24,33,47,0.06)',
-        link: '#14532d',
+        link: '#4c1d95',
+        buttonBg: '#18212f',
+        buttonText: '#ffffff',
       };
   root.innerHTML = `
     <style>
@@ -135,7 +139,7 @@ function render(payload: PagePayload) {
       .subhead { color:${theme.muted}; font-size:13px; line-height:1.4; }
       .chips { display:flex; flex-wrap:wrap; gap:6px; }
       .chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; background:${theme.chipBg}; color:${theme.chipText}; padding:4px 8px; font-size:11px; }
-      button { border:0; border-radius:999px; padding:4px 10px; font:inherit; background:#18212f; color:white; cursor:pointer; min-width:66px; font-size:11px; }
+      button { border:0; border-radius:999px; padding:4px 10px; font:inherit; background:${theme.buttonBg}; color:${theme.buttonText}; cursor:pointer; min-width:66px; font-size:11px; }
       button:disabled { opacity:.65; cursor:default; }
       .panel-grid { display:grid; gap:10px; }
       .row { display:grid; grid-template-columns: 140px minmax(0, 1fr); gap:12px; padding:8px 0; border-bottom:1px solid ${theme.rowBorder}; }
