@@ -35,20 +35,33 @@ if (!root) throw new Error('Missing root element');
 
 const app = new App({ name: 'drive-metadata-view', version: '0.1.0' }, {}, { autoResize: true });
 let currentArgs: Record<string, unknown> = {};
+let currentPayload: MetadataPayload = {};
 let isRefreshing = false;
+let isDarkTheme = false;
+
+function detectDarkTheme(): boolean {
+  const context = app.getHostContext();
+  const theme = context?.theme as { mode?: string; appearance?: string; colorScheme?: string } | undefined;
+  const mode = (theme?.mode ?? theme?.appearance ?? theme?.colorScheme ?? '').toLowerCase();
+  if (mode.includes('dark')) return true;
+  if (mode.includes('light')) return false;
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
 
 function applyHost() {
   const context = app.getHostContext();
   if (context?.theme) applyDocumentTheme(context.theme);
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+  isDarkTheme = detectDarkTheme();
 }
 
 function notifySizeChanged() {
   requestAnimationFrame(() => {
-    const width = Math.ceil(document.documentElement.scrollWidth);
-    const height = Math.ceil(document.documentElement.scrollHeight);
-    void app.sendSizeChanged({ width, height });
+    void app.sendSizeChanged({
+      width: Math.ceil(document.documentElement.scrollWidth),
+      height: Math.ceil(document.documentElement.scrollHeight),
+    });
   });
 }
 
@@ -82,97 +95,227 @@ function ownerLabel(owners?: Person[] | null): string {
     .join(', ');
 }
 
+function getTheme() {
+  return isDarkTheme
+    ? {
+        title: '#f5f5f5',
+        text: '#d4d4d8',
+        muted: '#a1a1aa',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(103, 232, 249, 0.12), transparent 36%), linear-gradient(180deg, #0f172a 0%, #071e26 100%)',
+        panelBg: 'rgba(24, 24, 27, 0.94)',
+        panelBorder: 'rgba(103, 232, 249, 0.12)',
+        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
+        accent: '#67e8f9',
+        chipBg: '#164e63',
+        chipText: '#67e8f9',
+        statusChipBg: '#27272a',
+        statusChipText: '#d4d4d8',
+        headText: '#94a3b8',
+        rowBorder: 'rgba(103, 232, 249, 0.1)',
+        link: '#a5f3fc',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
+      }
+    : {
+        title: '#0c1a1f',
+        text: '#5b6471',
+        muted: '#667085',
+        shellBg:
+          'radial-gradient(circle at top left, rgba(207, 250, 254, 0.85), transparent 35%), linear-gradient(180deg, #f0fdff 0%, #ecfeff 100%)',
+        panelBg: 'rgba(255,255,255,0.93)',
+        panelBorder: 'rgba(8, 145, 178, 0.1)',
+        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
+        accent: '#0891b2',
+        chipBg: '#ecfeff',
+        chipText: '#0891b2',
+        statusChipBg: '#f3f4f6',
+        statusChipText: '#374151',
+        headText: '#667085',
+        rowBorder: 'rgba(8, 145, 178, 0.07)',
+        link: '#164e63',
+        buttonBg: '#0c1a1f',
+        buttonText: '#ffffff',
+      };
+}
+
 function render(payload: MetadataPayload) {
+  currentPayload = payload;
   const file = payload.file;
+  const t = getTheme();
+
+  const statusChips = [
+    file?.isFolder ? 'Folder' : 'File',
+    file?.isGoogleWorkspace ? 'Google Workspace' : '',
+    file?.shared ? 'Shared' : '',
+    file?.starred ? 'Starred' : '',
+    file?.trashed ? 'In Trash' : '',
+    typeof file?.permissionCount === 'number' ? `${file.permissionCount} permission(s)` : '',
+  ]
+    .filter(Boolean)
+    .map((label) => `<span class="status-chip">${escapeHtml(label)}</span>`)
+    .join('');
+
   root.innerHTML = `
     <style>
       html, body { margin: 0; padding: 0; min-height: 0; }
-      body {
-        font-family: Georgia, serif;
-        color: #1c2430;
-        background:
-          radial-gradient(circle at top left, rgba(232, 244, 255, 0.9), transparent 35%),
-          linear-gradient(180deg, #fffdf9 0%, #f8fbff 100%);
-        padding: 14px;
+      body { font-family: Georgia, serif; color: ${t.title}; background: transparent; padding: 0; }
+      .shell {
+        display: grid;
+        gap: 12px;
+        margin: 10px;
+        padding: 10px;
+        border-radius: 22px;
+        background: ${t.shellBg};
       }
-      .shell { display: grid; gap: 12px; }
-      .hero, .panel, .detail-grid > article {
-        background: rgba(255,255,255,0.93);
-        border: 1px solid rgba(28,36,48,0.1);
+      .hero, .panel {
+        background: ${t.panelBg};
+        border: 1px solid ${t.panelBorder};
         border-radius: 18px;
-        box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+        box-shadow: ${t.shadow};
       }
-      .hero { padding: 14px; display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
-      .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: #7c3aed; }
-      h1, h2, p { margin: 0; }
-      h1 { font-size: 26px; line-height: 1.08; }
-      .meta { margin-top: 8px; color: #5b6471; line-height: 1.4; font-size: 14px; }
-      .detail-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-      .detail-grid > article, .panel { padding: 14px; }
-      .label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; color: #667085; margin-bottom: 6px; }
-      .value { font-size: 19px; line-height: 1.2; }
-      .subtle { color: #5b6471; line-height: 1.45; font-size: 14px; }
+      .hero { padding: 12px; display: grid; gap: 8px; }
+      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${t.accent}; }
+      h1, p { margin: 0; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${t.accent}; }
+      .toolbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: nowrap;
+      }
+      .toolbar-main { min-width: 0; display: grid; gap: 6px; }
+      .toolbar-actions { display: flex; align-items: flex-end; flex: 0 0 auto; margin-left: auto; }
+      .subhead { color: ${t.text}; font-size: 13px; line-height: 1.4; }
       .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-      .chip { border-radius: 999px; background: #f3f4f6; color: #374151; padding: 5px 9px; font-size: 11px; }
-      .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-      .actions a {
+      .chip {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        color: #14532d;
+        border-radius: 999px;
+        background: ${t.chipBg};
+        color: ${t.chipText};
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: ${t.statusChipBg};
+        color: ${t.statusChipText};
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font: inherit;
+        background: ${t.buttonBg};
+        color: ${t.buttonText};
+        cursor: pointer;
+        min-width: 66px;
+        font-size: 11px;
+      }
+      button:disabled { opacity: 0.65; cursor: default; }
+      @media (max-width: 640px) {
+        .toolbar { flex-wrap: wrap; }
+        .toolbar-actions { width: 100%; justify-content: flex-end; margin-left: 0; }
+      }
+      .panel { overflow: hidden; }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 9px 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        flex-wrap: wrap;
+      }
+      .label { text-transform: uppercase; letter-spacing: 0.14em; font-size: 11px; color: ${t.accent}; }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0;
+      }
+      .detail-cell {
+        padding: 10px 12px;
+        border-bottom: 1px solid ${t.rowBorder};
+        border-right: 1px solid ${t.rowBorder};
+      }
+      .detail-cell:nth-child(even) { border-right: 0; }
+      .detail-cell:nth-last-child(-n+2) { border-bottom: 0; }
+      .detail-label { text-transform: uppercase; letter-spacing: 0.13em; font-size: 11px; color: ${t.headText}; margin-bottom: 4px; }
+      .detail-value { font-size: 14px; font-weight: 700; color: ${t.title}; line-height: 1.3; }
+      .panel-body { padding: 10px 12px; }
+      .subtle { color: ${t.text}; line-height: 1.5; font-size: 13px; }
+      .file-link {
+        display: inline-flex;
+        align-items: center;
+        color: ${t.link};
         text-decoration: none;
         font-weight: 600;
-        font-size: 13px;
+        font-size: 12px;
       }
-      .actions a:hover { text-decoration: underline; }
-      .note { color: #667085; font-size: 11px; line-height: 1.45; }
-      button { border: 0; border-radius: 999px; padding: 8px 14px; font: inherit; background: #1c2430; color: white; cursor: pointer; min-width: 96px; }
-      button:disabled { opacity: 0.65; cursor: default; }
-      @media (max-width: 720px) {
-        body { padding: 12px; }
-        .hero { display: grid; }
-        h1 { font-size: 24px; }
-      }
+      .file-link:hover { text-decoration: underline; }
+      .note { color: ${t.muted}; font-size: 11px; line-height: 1.45; }
     </style>
     <div class="shell">
       <section class="hero">
-        <div>
-          <p class="eyebrow">Google Drive</p>
-          <h1>${escapeHtml(file?.name || 'Untitled')}</h1>
-          <p class="meta">${escapeHtml(file?.mimeType || 'Unknown type')} · ${escapeHtml(file?.size || 'N/A')}</p>
-        </div>
-        <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
-      </section>
-      <section class="detail-grid">
-        <article><div class="label">Owner</div><div class="value">${escapeHtml(ownerLabel(file?.owners))}</div></article>
-        <article><div class="label">Updated</div><div class="value">${escapeHtml(formatDate(file?.modifiedTime))}</div></article>
-        <article><div class="label">Created</div><div class="value">${escapeHtml(formatDate(file?.createdTime))}</div></article>
-        <article><div class="label">Parents</div><div class="value">${escapeHtml(String(file?.parents?.length ?? 0))}</div></article>
-      </section>
-      <section class="panel">
-        <div class="label">Status</div>
-        <div class="chips">
-          ${file?.isFolder ? '<span class="chip">Folder</span>' : '<span class="chip">File</span>'}
-          ${file?.isGoogleWorkspace ? '<span class="chip">Google Workspace</span>' : ''}
-          ${file?.shared ? '<span class="chip">Shared</span>' : ''}
-          ${file?.starred ? '<span class="chip">Starred</span>' : ''}
-          ${file?.trashed ? '<span class="chip">In Trash</span>' : ''}
-          ${typeof file?.permissionCount === 'number' ? `<span class="chip">${file.permissionCount} permission(s)</span>` : ''}
+        <p class="eyebrow">Google Drive</p>
+        <h1>${escapeHtml(file?.name || 'Untitled')}</h1>
+        <div class="toolbar">
+          <div class="toolbar-main">
+            <p class="subhead">${escapeHtml(file?.mimeType || 'Unknown type')}${file?.size ? ` · ${escapeHtml(file.size)}` : ''}</p>
+            <div class="chips">${statusChips}</div>
+          </div>
+          <div class="toolbar-actions">
+            <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
+          </div>
         </div>
       </section>
       <section class="panel">
-        <div class="label">Description</div>
-        <p class="subtle">${escapeHtml(file?.description || 'No description available.')}</p>
+        <div class="panel-head">
+          <div class="label">Details</div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-cell">
+            <div class="detail-label">Owner</div>
+            <div class="detail-value">${escapeHtml(ownerLabel(file?.owners))}</div>
+          </div>
+          <div class="detail-cell">
+            <div class="detail-label">Updated</div>
+            <div class="detail-value">${escapeHtml(formatDate(file?.modifiedTime))}</div>
+          </div>
+          <div class="detail-cell">
+            <div class="detail-label">Created</div>
+            <div class="detail-value">${escapeHtml(formatDate(file?.createdTime))}</div>
+          </div>
+          <div class="detail-cell">
+            <div class="detail-label">Parents</div>
+            <div class="detail-value">${escapeHtml(String(file?.parents?.length ?? 0))}</div>
+          </div>
+        </div>
       </section>
       <section class="panel">
-        <div class="label">Links</div>
-        <div class="actions">
-          ${file?.webViewLink ? `<a href="${escapeHtml(file.webViewLink)}" target="_blank" rel="noreferrer">Open in Drive</a>` : ''}
+        <div class="panel-head">
+          <div class="label">Description</div>
         </div>
-        <p class="note">Claude may block direct left-click navigation. If needed, use right-click and open the link in your browser.</p>
+        <div class="panel-body">
+          <p class="subtle">${escapeHtml(file?.description || 'No description available.')}</p>
+        </div>
       </section>
+      <section class="panel">
+        <div class="panel-head">
+          <div class="label">Links</div>
+          ${file?.webViewLink ? `<a class="file-link" href="${escapeHtml(file.webViewLink)}" target="_blank" rel="noreferrer">Open in Drive</a>` : ''}
+        </div>
+      </section>
+      <p class="note">Claude may block direct left-click navigation. If needed, use right-click and open the link in your browser.</p>
     </div>
   `;
+
   bindRefresh();
   notifySizeChanged();
 }
@@ -186,12 +329,8 @@ function bindRefresh() {
       button.disabled = true;
       button.textContent = 'Refreshing...';
     }
-
     try {
-      const result = await app.callServerTool({
-        name: 'gdriveGetFileMetadata',
-        arguments: currentArgs,
-      });
+      const result = await app.callServerTool({ name: 'gdriveGetFileMetadata', arguments: currentArgs });
       render((result.structuredContent ?? {}) as MetadataPayload);
     } finally {
       isRefreshing = false;
@@ -213,5 +352,8 @@ app.ontoolresult = (result) => {
   render((result.structuredContent ?? {}) as MetadataPayload);
 };
 
-app.onhostcontextchanged = () => applyHost();
+app.onhostcontextchanged = () => {
+  applyHost();
+  if (currentPayload.file) render(currentPayload);
+};
 app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
