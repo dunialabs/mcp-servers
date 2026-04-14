@@ -96,6 +96,16 @@ export async function hubspotSearchContacts(params: SearchContactsParams) {
   );
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
+    structuredContent: {
+      kind: 'hubspot-crm-list',
+      objectType: 'contacts',
+      mode: 'search',
+      query: params.query ?? null,
+      total: payload.total ?? null,
+      count: payload.count,
+      nextAfter: payload.nextAfter ?? null,
+      records: payload.results,
+    },
   };
 }
 

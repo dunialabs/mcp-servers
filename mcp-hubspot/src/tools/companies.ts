@@ -87,6 +87,16 @@ export async function hubspotSearchCompanies(params: SearchCompaniesParams) {
 
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
+    structuredContent: {
+      kind: 'hubspot-crm-list',
+      objectType: 'companies',
+      mode: 'search',
+      query: params.query ?? null,
+      total: payload.total ?? null,
+      count: payload.count,
+      nextAfter: payload.nextAfter ?? null,
+      records: payload.results,
+    },
   };
 }
 

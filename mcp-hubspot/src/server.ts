@@ -1,4 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { readFileSync } from 'fs';
 import path from 'path';
@@ -96,6 +101,10 @@ import {
 } from './tools/pipelines.js';
 import { normalizeAccessToken, validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
+import { readAppHtml } from './utils/app-resource.js';
+
+const HUBSPOT_BROWSER_VIEW_URI = 'ui://hubspot/browser-view.html';
+const HUBSPOT_DEAL_VIEW_URI = 'ui://hubspot/deal-view.html';
 
 function getServerVersion(): string {
   try {
@@ -164,6 +173,7 @@ export class HubSpotMcpServer {
     );
 
     this.registerTools();
+    this.registerAppResources();
     logger.info('[Server] HubSpot MCP Server initialized');
   }
 
@@ -177,12 +187,18 @@ export class HubSpotMcpServer {
       },
       async (params) => hubspotGetContact(params)
     );
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'hubspotSearchContacts',
       {
         title: 'HubSpot - Search Contacts',
         description: 'Search contacts with query/filter/pagination.',
         inputSchema: SearchContactsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: HUBSPOT_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params) => hubspotSearchContacts(params)
     );
@@ -232,12 +248,18 @@ export class HubSpotMcpServer {
       },
       async (params) => hubspotGetCompany(params)
     );
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'hubspotSearchCompanies',
       {
         title: 'HubSpot - Search Companies',
         description: 'Search companies with query/filter/pagination.',
         inputSchema: SearchCompaniesInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: HUBSPOT_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params) => hubspotSearchCompanies(params)
     );
@@ -269,21 +291,33 @@ export class HubSpotMcpServer {
       async (params) => hubspotArchiveCompany(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'hubspotGetDeal',
       {
         title: 'HubSpot - Get Deal',
         description: 'Get deal details by record ID.',
         inputSchema: GetDealInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: HUBSPOT_DEAL_VIEW_URI,
+          },
+        },
       },
       async (params) => hubspotGetDeal(params)
     );
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'hubspotSearchDeals',
       {
         title: 'HubSpot - Search Deals',
         description: 'Search deals with query/filter/pagination.',
         inputSchema: SearchDealsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: HUBSPOT_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params) => hubspotSearchDeals(params)
     );
@@ -501,6 +535,40 @@ export class HubSpotMcpServer {
     );
 
     logger.info('[Server] Registered 36 HubSpot tools');
+  }
+
+  private registerAppResources() {
+    registerAppResource(
+      this.server,
+      'HubSpot CRM Browser View',
+      HUBSPOT_BROWSER_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: HUBSPOT_BROWSER_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('hubspot-browser-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'HubSpot Deal Detail View',
+      HUBSPOT_DEAL_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: HUBSPOT_DEAL_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('hubspot-deal-view.html'),
+          },
+        ],
+      })
+    );
   }
 
   async connect(transport: Transport) {

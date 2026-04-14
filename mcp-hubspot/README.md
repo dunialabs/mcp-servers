@@ -2,6 +2,32 @@
 
 HubSpot MCP server for PETA ecosystem with STDIO transport.
 
+## MCP Apps Views
+
+The following tools now expose MCP Apps views in clients that support Apps:
+
+- `hubspotSearchContacts`
+- `hubspotSearchCompanies`
+- `hubspotSearchDeals`
+- `hubspotGetDeal`
+
+Behavior:
+- Apps-capable clients render a CRM browser or deal detail view
+- Non-Apps clients continue to receive the original JSON/text fallback
+
+## Build Notes
+
+`npm run build` now performs both steps:
+
+1. compile the server TypeScript
+2. build the MCP Apps HTML resources
+
+If you only need to rebuild the UI resources during local view iteration:
+
+```bash
+npm run build:app
+```
+
 ## Tools (36)
 
 1. `hubspotGetContact`

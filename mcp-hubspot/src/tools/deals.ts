@@ -66,8 +66,14 @@ export async function hubspotGetDeal(params: GetDealParams) {
     'hubspotGetDeal'
   );
 
+  const payload = summarizeObject(response);
+
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify(summarizeObject(response), null, 2) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
+    structuredContent: {
+      kind: 'hubspot-deal-detail',
+      deal: payload,
+    },
   };
 }
 
@@ -87,6 +93,16 @@ export async function hubspotSearchDeals(params: SearchDealsParams) {
 
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
+    structuredContent: {
+      kind: 'hubspot-crm-list',
+      objectType: 'deals',
+      mode: 'search',
+      query: params.query ?? null,
+      total: payload.total ?? null,
+      count: payload.count,
+      nextAfter: payload.nextAfter ?? null,
+      records: payload.results,
+    },
   };
 }
 
