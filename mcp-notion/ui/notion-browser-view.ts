@@ -108,7 +108,8 @@ function render(payload: BrowserPayload) {
         chipBg: '#2b2047',
         chipText: '#ddd6fe',
         headText: '#a1a1aa',
-        rowBorder: 'rgba(244,244,245,0.08)',
+        panelBorder: 'rgba(167, 139, 250, 0.12)',
+        rowBorder: 'rgba(167, 139, 250, 0.1)',
         link: '#ddd6fe',
         buttonBg: '#f5f5f5',
         buttonText: '#111111',
@@ -118,13 +119,13 @@ function render(payload: BrowserPayload) {
         muted: '#5b6471',
         shellBg: 'radial-gradient(circle at top left, rgba(246, 238, 255, 0.9), transparent 35%), linear-gradient(180deg, #fbf8ff 0%, #fffdf8 100%)',
         panelBg: 'rgba(255,255,255,0.93)',
-        panelBorder: 'rgba(24,33,47,0.1)',
+        panelBorder: 'rgba(109, 40, 217, 0.1)',
         shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
         accent: '#6d28d9',
         chipBg: '#f3e8ff',
         chipText: '#6d28d9',
         headText: '#667085',
-        rowBorder: 'rgba(24,33,47,0.06)',
+        rowBorder: 'rgba(109, 40, 217, 0.07)',
         link: '#4c1d95',
         buttonBg: '#18212f',
         buttonText: '#ffffff',
@@ -151,11 +152,11 @@ function render(payload: BrowserPayload) {
       .hero { padding: 12px; display: grid; gap: 8px; }
       .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${theme.accent}; }
       h1, p { margin: 0; }
-      h1 { font-size: 22px; line-height: 1.08; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${theme.accent}; }
       .toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:nowrap; }
       .toolbar-main { min-width:0; display:grid; gap:6px; }
       .toolbar-actions { display:flex; align-items:flex-end; margin-left:auto; }
-      .subhead { color:${theme.muted}; font-size:13px; line-height:1.4; }
+      .subhead { color:${theme.text}; font-size:13px; line-height:1.4; }
       .chips { display:flex; flex-wrap:wrap; gap:6px; }
       .chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; background:${theme.chipBg}; color:${theme.chipText}; padding:4px 8px; font-size:11px; }
       button { border:0; border-radius:999px; padding:4px 10px; font:inherit; background:${theme.buttonBg}; color:${theme.buttonText}; cursor:pointer; min-width:66px; font-size:11px; }
