@@ -29,7 +29,10 @@ const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('Missing root element');
 
 const app = new App({ name: 'gmail-browser-view', version: '0.1.0' }, {}, { autoResize: true });
+let currentArgs: Record<string, unknown> = {};
+let currentTool = 'gmailListMessages';
 let currentPayload: BrowserPayload = {};
+let isRefreshing = false;
 let isDarkTheme = false;
 
 function detectDarkTheme(): boolean {
@@ -88,35 +91,41 @@ function render(payload: BrowserPayload) {
   const mode = payload.mode ?? 'list';
   const theme = isDarkTheme
     ? {
+        title: '#f5f5f5',
         text: '#e5e7eb',
         muted: '#a1a1aa',
-        shellBg: 'radial-gradient(circle at top left, rgba(120, 53, 15, 0.18), transparent 35%), linear-gradient(180deg, #111111 0%, #18181b 100%)',
+        shellBg: 'radial-gradient(circle at top left, rgba(26, 115, 232, 0.14), transparent 36%), linear-gradient(180deg, #0f172a 0%, #060d1a 100%)',
         panelBg: 'rgba(24,24,27,0.94)',
-        panelBorder: 'rgba(244, 244, 245, 0.08)',
+        panelBorder: 'rgba(147, 197, 253, 0.12)',
         shadow: '0 8px 20px rgba(0, 0, 0, 0.28)',
-        eyebrow: '#fb923c',
-        chipBg: '#332015',
-        chipText: '#fdba74',
+        accent: '#60a5fa',
+        chipBg: '#0c1a3d',
+        chipText: '#93c5fd',
         headText: '#a1a1aa',
-        rowBorder: 'rgba(244, 244, 245, 0.08)',
+        rowBorder: 'rgba(147, 197, 253, 0.1)',
+        buttonBg: '#f5f5f5',
+        buttonText: '#111111',
       }
     : {
-        text: '#18212f',
-        muted: '#5b6471',
-        shellBg: 'radial-gradient(circle at top left, rgba(255, 245, 235, 0.92), transparent 35%), linear-gradient(180deg, #fffdf8 0%, #f8fbff 100%)',
+        title: '#0d1f3c',
+        text: '#5b6471',
+        muted: '#667085',
+        shellBg: 'radial-gradient(circle at top left, rgba(219, 234, 254, 0.85), transparent 35%), linear-gradient(180deg, #f8fbff 0%, #f0f7ff 100%)',
         panelBg: 'rgba(255,255,255,0.93)',
-        panelBorder: 'rgba(24,33,47,0.1)',
+        panelBorder: 'rgba(26, 115, 232, 0.1)',
         shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
-        eyebrow: '#b45309',
-        chipBg: '#fff4e5',
-        chipText: '#b45309',
+        accent: '#1a73e8',
+        chipBg: '#dbeafe',
+        chipText: '#1d4ed8',
         headText: '#667085',
-        rowBorder: 'rgba(24,33,47,0.06)',
+        rowBorder: 'rgba(26, 115, 232, 0.07)',
+        buttonBg: '#0d1f3c',
+        buttonText: '#ffffff',
       };
   root.innerHTML = `
     <style>
       html, body { margin: 0; padding: 0; min-height: 0; }
-      body { font-family: Georgia, serif; color: ${theme.text}; background: transparent; padding: 0; }
+      body { font-family: Georgia, serif; color: ${theme.title}; background: transparent; padding: 0; }
       .shell {
         display: grid;
         gap: 12px;
@@ -133,13 +142,18 @@ function render(payload: BrowserPayload) {
         box-shadow: ${theme.shadow};
       }
       .hero { padding: 12px; display: grid; gap: 8px; }
-      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${theme.eyebrow}; }
+      .eyebrow { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: ${theme.accent}; }
       h1, p { margin: 0; }
-      h1 { font-size: 22px; line-height: 1.08; }
+      h1 { font-size: 22px; line-height: 1.08; color: ${theme.accent}; }
+      .toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:nowrap; }
       .toolbar-main { min-width: 0; display: grid; gap: 6px; }
-      .subhead { color:${theme.muted}; font-size:13px; line-height:1.4; }
+      .toolbar-actions { display:flex; align-items:flex-end; margin-left:auto; }
+      .subhead { color:${theme.text}; font-size:13px; line-height:1.4; }
       .chips { display:flex; flex-wrap:wrap; gap:6px; }
       .chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; background:${theme.chipBg}; color:${theme.chipText}; padding:4px 8px; font-size:11px; }
+      button { border:0; border-radius:999px; padding:4px 10px; font:inherit; background:${theme.buttonBg}; color:${theme.buttonText}; cursor:pointer; min-width:66px; font-size:11px; }
+      button:disabled { opacity:.65; cursor:default; }
+      @media (max-width: 640px) { .toolbar { flex-wrap:wrap; } .toolbar-actions { width:100%; justify-content:flex-end; margin-left:0; } }
       .panel { overflow: hidden; }
       .table-head, .table-row {
         display: grid;
@@ -158,20 +172,26 @@ function render(payload: BrowserPayload) {
       @media (max-width: 720px) {
         .table-head, .table-row { grid-template-columns: minmax(220px, 1.8fr) minmax(120px, 1fr); }
         .table-head > :last-child, .table-row > :last-child { display: none; }
+        .toolbar { flex-wrap:wrap; }
       }
     </style>
     <div class="shell">
       <section class="hero">
         <p class="eyebrow">Gmail</p>
         <h1>${mode === 'search' ? 'Search Results' : 'Mailbox'}</h1>
-        <div class="toolbar-main">
-          <p class="subhead">${escapeHtml(mode === 'search' ? `Showing results for "${payload.query ?? ''}".` : 'Browse recent Gmail messages.')}</p>
-          <div class="chips">
-            <span class="chip">Estimate: ${escapeHtml(String(payload.resultSizeEstimate ?? messages.length))}</span>
-            ${payload.query ? `<span class="chip">Query: ${escapeHtml(payload.query)}</span>` : ''}
-            ${payload.labelIds && payload.labelIds.length > 0 ? `<span class="chip">Labels: ${escapeHtml(payload.labelIds.join(', '))}</span>` : ''}
-            ${payload.includeMessageDetails ? '' : '<span class="chip">Compact mode</span>'}
-            ${payload.nextPageToken ? '<span class="chip">More available</span>' : ''}
+        <div class="toolbar">
+          <div class="toolbar-main">
+            <p class="subhead">${escapeHtml(mode === 'search' ? `Showing results for "${payload.query ?? ''}".` : 'Browse recent Gmail messages.')}</p>
+            <div class="chips">
+              <span class="chip">Estimate: ${escapeHtml(String(payload.resultSizeEstimate ?? messages.length))}</span>
+              ${payload.query ? `<span class="chip">Query: ${escapeHtml(payload.query)}</span>` : ''}
+              ${payload.labelIds && payload.labelIds.length > 0 ? `<span class="chip">Labels: ${escapeHtml(payload.labelIds.join(', '))}</span>` : ''}
+              ${payload.includeMessageDetails ? '' : '<span class="chip">Compact mode</span>'}
+              ${payload.nextPageToken ? '<span class="chip">More available</span>' : ''}
+            </div>
+          </div>
+          <div class="toolbar-actions">
+            <button id="refresh" ${isRefreshing ? 'disabled' : ''}>${isRefreshing ? 'Refreshing...' : 'Refresh'}</button>
           </div>
         </div>
       </section>
@@ -197,8 +217,29 @@ function render(payload: BrowserPayload) {
     </div>
   `;
 
+  bindRefresh();
   notifySizeChanged();
 }
+
+function bindRefresh() {
+  root.querySelector<HTMLButtonElement>('#refresh')?.addEventListener('click', async () => {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    render(currentPayload);
+    try {
+      const result = await app.callServerTool({ name: currentTool, arguments: currentArgs });
+      render((result.structuredContent ?? {}) as BrowserPayload);
+    } finally {
+      isRefreshing = false;
+      notifySizeChanged();
+    }
+  });
+}
+
+app.ontoolinput = ({ arguments: args, toolInfo }) => {
+  currentArgs = args ?? {};
+  if (toolInfo?.name) currentTool = toolInfo.name;
+};
 
 app.ontoolresult = (result) => {
   render((result.structuredContent ?? {}) as BrowserPayload);
