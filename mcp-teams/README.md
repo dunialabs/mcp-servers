@@ -70,7 +70,16 @@ Microsoft Teams MCP server for PETA ecosystem with STDIO transport.
 For enterprise Teams usage, admin consent is typically required before normal users can connect.
 
 Required flow:
-1. Tenant admin grants consent once for the Teams app scopes.
+1. Tenant admin grants consent once for the Teams app scopes using the admin consent URL:
+   ```
+   https://login.microsoftonline.com/{tenant_id}/adminconsent
+     ?client_id={your_app_client_id}
+     &redirect_uri={your_redirect_uri}
+     &state={optional_state}
+   ```
+   - `tenant_id` — Azure AD tenant ID (or `common` for multi-tenant apps)
+   - `client_id` — Application (client) ID from Azure Portal
+   - `redirect_uri` — Must match the registered redirect URI exactly
 2. Regular users authorize in Console.
 3. Core injects `accessToken` to MCP runtime.
 
