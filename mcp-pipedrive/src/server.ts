@@ -1,4 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { readFileSync } from 'fs';
 import path from 'path';
@@ -6,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { validateTokenFormat, normalizeApiDomain, normalizeAccessToken } from './auth/token.js';
 import { logger } from './utils/logger.js';
+import { readAppHtml } from './utils/app-resource.js';
 import {
   AddDealProductInputSchema,
   CreateDealInputSchema,
@@ -152,6 +158,9 @@ function getServerVersion(): string {
   }
 }
 
+const PIPEDRIVE_BROWSER_VIEW_URI = 'ui://pipedrive/browser-view.html';
+const PIPEDRIVE_PIPELINE_VIEW_URI = 'ui://pipedrive/pipeline-view.html';
+
 export class PipedriveMcpServer {
   private server: McpServer;
 
@@ -214,18 +223,39 @@ export class PipedriveMcpServer {
     );
 
     this.registerTools();
+    this.registerAppResources();
     logger.info('[Server] Pipedrive MCP Server initialized');
   }
 
   private registerTools() {
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveListDeals',
-      { title: 'Pipedrive - List Deals', description: 'List deals.', inputSchema: ListDealsInputSchema },
+      {
+        title: 'Pipedrive - List Deals',
+        description: 'List deals.',
+        inputSchema: ListDealsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_BROWSER_VIEW_URI,
+          },
+        },
+      },
       async (params) => pipedriveListDeals(params)
     );
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveSearchDeals',
-      { title: 'Pipedrive - Search Deals', description: 'Search deals by term.', inputSchema: SearchDealsInputSchema },
+      {
+        title: 'Pipedrive - Search Deals',
+        description: 'Search deals by term.',
+        inputSchema: SearchDealsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_BROWSER_VIEW_URI,
+          },
+        },
+      },
       async (params) => pipedriveSearchDeals(params)
     );
     this.server.registerTool(
@@ -285,14 +315,34 @@ export class PipedriveMcpServer {
       async (params) => pipedriveRemoveDealProduct(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveListPersons',
-      { title: 'Pipedrive - List Persons', description: 'List persons.', inputSchema: ListPersonsInputSchema },
+      {
+        title: 'Pipedrive - List Persons',
+        description: 'List persons.',
+        inputSchema: ListPersonsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_BROWSER_VIEW_URI,
+          },
+        },
+      },
       async (params) => pipedriveListPersons(params)
     );
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveSearchPersons',
-      { title: 'Pipedrive - Search Persons', description: 'Search persons.', inputSchema: SearchPersonsInputSchema },
+      {
+        title: 'Pipedrive - Search Persons',
+        description: 'Search persons.',
+        inputSchema: SearchPersonsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_BROWSER_VIEW_URI,
+          },
+        },
+      },
       async (params) => pipedriveSearchPersons(params)
     );
     this.server.registerTool(
@@ -330,21 +380,33 @@ export class PipedriveMcpServer {
       async (params) => pipedriveListPersonDeals(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveListOrganizations',
       {
         title: 'Pipedrive - List Organizations',
         description: 'List organizations.',
         inputSchema: ListOrganizationsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params) => pipedriveListOrganizations(params)
     );
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveSearchOrganizations',
       {
         title: 'Pipedrive - Search Organizations',
         description: 'Search organizations.',
         inputSchema: SearchOrganizationsInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params) => pipedriveSearchOrganizations(params)
     );
@@ -546,12 +608,18 @@ export class PipedriveMcpServer {
       async (params) => pipedriveDeleteProduct(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveListPipelines',
       {
         title: 'Pipedrive - List Pipelines',
         description: 'List pipelines.',
         inputSchema: ListPipelinesInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_PIPELINE_VIEW_URI,
+          },
+        },
       },
       async (params) => pipedriveListPipelines(params)
     );
@@ -564,9 +632,19 @@ export class PipedriveMcpServer {
       },
       async (params) => pipedriveGetPipeline(params)
     );
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'pipedriveListStages',
-      { title: 'Pipedrive - List Stages', description: 'List stages.', inputSchema: ListStagesInputSchema },
+      {
+        title: 'Pipedrive - List Stages',
+        description: 'List stages.',
+        inputSchema: ListStagesInputSchema,
+        _meta: {
+          ui: {
+            resourceUri: PIPEDRIVE_PIPELINE_VIEW_URI,
+          },
+        },
+      },
       async (params) => pipedriveListStages(params)
     );
     this.server.registerTool(
@@ -602,6 +680,40 @@ export class PipedriveMcpServer {
         inputSchema: ListRecentsInputSchema,
       },
       async (params) => pipedriveListRecents(params)
+    );
+  }
+
+  private registerAppResources() {
+    registerAppResource(
+      this.server,
+      'Pipedrive Browser View',
+      PIPEDRIVE_BROWSER_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: PIPEDRIVE_BROWSER_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('pipedrive-browser-view.html'),
+          },
+        ],
+      })
+    );
+
+    registerAppResource(
+      this.server,
+      'Pipedrive Pipeline View',
+      PIPEDRIVE_PIPELINE_VIEW_URI,
+      {},
+      async () => ({
+        contents: [
+          {
+            uri: PIPEDRIVE_PIPELINE_VIEW_URI,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: await readAppHtml('pipedrive-pipeline-view.html'),
+          },
+        ],
+      })
     );
   }
 

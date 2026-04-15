@@ -29,7 +29,17 @@ export async function pipedriveListPipelines(params: { limit?: number; cursor?: 
     'pipedriveListPipelines'
   );
 
-  return formatToolResult(payload);
+  return {
+    ...formatToolResult(payload),
+    structuredContent: {
+      kind: 'pipedrive-pipeline-summary',
+      mode: 'pipelines',
+      count: payload.count,
+      nextCursor: payload.nextCursor ?? null,
+      hasMore: payload.hasMore,
+      results: payload.results,
+    },
+  };
 }
 
 export async function pipedriveGetPipeline(params: { pipelineId: number }) {
@@ -52,7 +62,18 @@ export async function pipedriveListStages(params: { limit?: number; cursor?: str
     'pipedriveListStages'
   );
 
-  return formatToolResult(payload);
+  return {
+    ...formatToolResult(payload),
+    structuredContent: {
+      kind: 'pipedrive-pipeline-summary',
+      mode: 'stages',
+      pipelineId: params.pipelineId ?? null,
+      count: payload.count,
+      nextCursor: payload.nextCursor ?? null,
+      hasMore: payload.hasMore,
+      results: payload.results,
+    },
+  };
 }
 
 export async function pipedriveGetStage(params: { stageId: number }) {

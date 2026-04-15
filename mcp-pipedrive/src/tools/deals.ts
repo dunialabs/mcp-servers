@@ -80,7 +80,18 @@ export async function pipedriveListDeals(params: {
     'pipedriveListDeals'
   );
 
-  return formatToolResult(payload);
+  return {
+    ...formatToolResult(payload),
+    structuredContent: {
+      kind: 'pipedrive-crm-list',
+      objectType: 'deals',
+      mode: 'list',
+      count: payload.count,
+      nextCursor: payload.nextCursor ?? null,
+      hasMore: payload.hasMore,
+      results: payload.results,
+    },
+  };
 }
 
 export async function pipedriveSearchDeals(params: {
@@ -104,11 +115,29 @@ export async function pipedriveSearchDeals(params: {
     'pipedriveSearchDeals'
   );
 
-  return formatToolResult({
-    count: Array.isArray(response.data) ? response.data.length : 0,
+  const items = Array.isArray(response.data)
+    ? response.data
+    : Array.isArray((response.data as Record<string, unknown>)?.items)
+      ? ((response.data as Record<string, unknown>).items as Record<string, unknown>[])
+      : [];
+  const payload = {
+    count: items.length,
     nextCursor: (response.additionalData?.next_cursor as string | undefined) ?? undefined,
-    results: response.data,
-  });
+    results: items,
+  };
+
+  return {
+    ...formatToolResult(payload),
+    structuredContent: {
+      kind: 'pipedrive-crm-list',
+      objectType: 'deals',
+      mode: 'search',
+      query: params.term,
+      count: payload.count,
+      nextCursor: payload.nextCursor ?? null,
+      results: payload.results,
+    },
+  };
 }
 
 export async function pipedriveGetDeal(params: { dealId: number }) {
