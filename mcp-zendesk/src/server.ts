@@ -4,15 +4,24 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { logger } from './utils/logger.js';
 import { getCurrentCredentials, getAuthMode, normalizeAccessToken, validateTokenFormat } from './auth/token.js';
 import { getServerVersion } from './utils/version.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 // Import tools
 import * as ticketTools from './tools/tickets.js';
 import * as userTools from './tools/users.js';
 import * as orgTools from './tools/organizations.js';
+
+const ZENDESK_BROWSER_VIEW_URI = 'ui://zendesk/browser-view.html';
+const ZENDESK_TICKET_VIEW_URI = 'ui://zendesk/ticket-view.html';
 
 /**
  * Zendesk MCP Server Class
@@ -94,6 +103,7 @@ export class ZendeskMcpServer {
     this.registerTicketTools();
     this.registerUserTools();
     this.registerOrganizationTools();
+    this.registerAppResources();
 
     logger.info('[Server] All tools registered successfully');
   }
@@ -103,23 +113,35 @@ export class ZendeskMcpServer {
    */
   private registerTicketTools() {
     // List Tickets
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'zendeskListTickets',
       {
         title: 'Zendesk - List Tickets',
         description: 'List recent Zendesk tickets. Use zendeskSearchTickets to filter by status or priority.',
         inputSchema: ticketTools.listTicketsSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: ZENDESK_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: any) => await ticketTools.listTickets(params)
     );
 
     // Get Ticket
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'zendeskGetTicket',
       {
         title: 'Zendesk - Get Ticket',
         description: 'Get details of a specific ticket by ID.',
         inputSchema: ticketTools.getTicketSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: ZENDESK_TICKET_VIEW_URI,
+          },
+        },
       },
       async (params: any) => await ticketTools.getTicket(params)
     );
@@ -180,12 +202,18 @@ export class ZendeskMcpServer {
     );
 
     // Search Tickets
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'zendeskSearchTickets',
       {
         title: 'Zendesk - Search Tickets',
         description: 'Search tickets using Zendesk query syntax (e.g., "status:open priority:high").',
         inputSchema: ticketTools.searchTicketsSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: ZENDESK_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: any) => await ticketTools.searchTickets(params)
     );
@@ -196,12 +224,18 @@ export class ZendeskMcpServer {
    */
   private registerUserTools() {
     // List Users
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'zendeskListUsers',
       {
         title: 'Zendesk - List Users',
         description: 'List Zendesk users with optional role filter (end-user, agent, admin).',
         inputSchema: userTools.listUsersSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: ZENDESK_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: any) => await userTools.listUsers(params)
     );
@@ -309,6 +343,28 @@ export class ZendeskMcpServer {
       },
       async (params: any) => await orgTools.deleteOrganization(params)
     );
+  }
+
+  private registerAppResources() {
+    registerAppResource(this.server, 'zendesk-browser-view', ZENDESK_BROWSER_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: ZENDESK_BROWSER_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('zendesk-browser-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'zendesk-ticket-view', ZENDESK_TICKET_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: ZENDESK_TICKET_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('zendesk-ticket-view.html'),
+        },
+      ],
+    }));
   }
 
   /**

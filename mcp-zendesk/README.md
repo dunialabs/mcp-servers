@@ -7,6 +7,7 @@ A Model Context Protocol (MCP) server for Zendesk integration, enabling AI assis
 - **18 Management Tools**: Complete ticket, user, and organization management
 - **Hybrid Authentication**: Supports both OAuth tokens (production) and API tokens (development)
 - **Token Refresh**: Automatic OAuth token refresh via MCP notifications
+- **MCP Apps Views**: Ticket queue, ticket detail, and user list views for compatible clients
 - **Docker Support**: Multi-platform Docker images (linux/amd64, linux/arm64)
 - **Type-Safe**: Full TypeScript implementation with Zod schemas
 - **Error Handling**: Comprehensive error handling with proper HTTP status code mapping
@@ -83,6 +84,25 @@ Console automatically provides OAuth tokens and handles refresh.
 Runtime token refresh is supported via `notifications/token/update`. The server accepts either
 `accessToken` or `token` in the notification payload and normalizes optional `Bearer ` prefixes
 before storing the latest OAuth token.
+
+## MCP Apps
+
+The following tools expose MCP Apps views in compatible clients while preserving the original
+text fallback for unsupported hosts:
+
+- `zendeskListTickets`
+- `zendeskSearchTickets`
+- `zendeskGetTicket`
+- `zendeskListUsers`
+
+Build the server with Apps assets using:
+
+```bash
+npm run build
+```
+
+`npm run build` now includes `npm run build:app`, which compiles the embedded HTML resources used
+by the Zendesk queue and ticket detail views.
 
 ```json
 {

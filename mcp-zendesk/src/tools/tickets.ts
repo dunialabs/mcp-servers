@@ -29,6 +29,13 @@ export async function listTickets(args: z.infer<typeof listTicketsSchema>) {
   try {
     const endpoint = `/tickets?per_page=${args.limit}`;
     const data = await zendeskAPI.get<ZendeskTicketsResponse>(endpoint);
+    const payload = {
+      kind: 'zendesk-ticket-list' as const,
+      mode: 'list' as const,
+      count: data.count ?? data.tickets.length,
+      hasMore: !!data.next_page,
+      tickets: data.tickets,
+    };
 
     return {
       content: [{
@@ -39,6 +46,7 @@ export async function listTickets(args: z.infer<typeof listTicketsSchema>) {
           has_more: !!data.next_page,
         }, null, 2),
       }],
+      structuredContent: payload,
     };
   } catch (error) {
     throw toMcpError(error, 'list_tickets');
@@ -55,12 +63,17 @@ export const getTicketSchema = z.object({
 export async function getTicket(args: z.infer<typeof getTicketSchema>) {
   try {
     const data = await zendeskAPI.get<ZendeskTicketResponse>(`/tickets/${args.ticket_id}`);
+    const payload = {
+      kind: 'zendesk-ticket-detail' as const,
+      ticket: data.ticket,
+    };
 
     return {
       content: [{
         type: 'text' as const,
         text: JSON.stringify(data.ticket, null, 2),
       }],
+      structuredContent: payload,
     };
   } catch (error) {
     throw toMcpError(error, 'get_ticket');
@@ -226,6 +239,14 @@ export async function searchTickets(args: z.infer<typeof searchTicketsSchema>) {
   try {
     const endpoint = `/search?query=${encodeURIComponent(`type:ticket ${args.query}`)}&per_page=${args.limit}`;
     const data = await zendeskAPI.get<{ results: ZendeskTicket[]; count: number }>(endpoint);
+    const payload = {
+      kind: 'zendesk-ticket-list' as const,
+      mode: 'search' as const,
+      query: args.query,
+      count: data.count,
+      hasMore: false,
+      tickets: data.results,
+    };
 
     return {
       content: [{
@@ -235,6 +256,7 @@ export async function searchTickets(args: z.infer<typeof searchTicketsSchema>) {
           count: data.count,
         }, null, 2),
       }],
+      structuredContent: payload,
     };
   } catch (error) {
     throw toMcpError(error, 'search_tickets');

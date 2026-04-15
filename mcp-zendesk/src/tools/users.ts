@@ -28,6 +28,13 @@ export async function listUsers(args: z.infer<typeof listUsersSchema>) {
     }
 
     const data = await zendeskAPI.get<ZendeskUsersResponse>(endpoint);
+    const payload = {
+      kind: 'zendesk-user-list' as const,
+      role: args.role ?? null,
+      count: data.count ?? data.users.length,
+      hasMore: !!data.next_page,
+      users: data.users,
+    };
 
     return {
       content: [{
@@ -38,6 +45,7 @@ export async function listUsers(args: z.infer<typeof listUsersSchema>) {
           has_more: !!data.next_page,
         }, null, 2),
       }],
+      structuredContent: payload,
     };
   } catch (error) {
     throw toMcpError(error, 'list_users');
