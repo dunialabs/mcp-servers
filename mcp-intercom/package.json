@@ -1,6 +1,6 @@
 {
   "name": "mcp-intercom",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Intercom MCP Server - Manage conversations, contacts, companies, and more through Intercom API",
   "main": "dist/stdio.js",
   "type": "module",
