@@ -26,13 +26,18 @@ export async function callSlackApi<T extends Record<string, unknown>>(
   body?: Record<string, unknown>
 ): Promise<SlackResponse<T>> {
   const token = getCurrentToken();
+  const params = body ?? {};
+  const formBody = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
   const response = await fetch(`https://slack.com/api/${method}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
     },
-    body: JSON.stringify(body ?? {}),
+    body: formBody,
   });
 
   let data: unknown = null;

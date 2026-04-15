@@ -49,7 +49,12 @@ export function handleSlackApiError(error: SlackApiErrorShape, context: string):
     );
   }
 
-  if (status === 404 || slackError === 'channel_not_found' || slackError === 'message_not_found') {
+  if (
+    status === 404 ||
+    slackError === 'channel_not_found' ||
+    slackError === 'message_not_found' ||
+    slackError === 'user_not_found'
+  ) {
     return createMcpError(SlackErrorCode.NotFound, 'Slack resource not found.', details);
   }
 
@@ -71,7 +76,7 @@ export function handleSlackApiError(error: SlackApiErrorShape, context: string):
 
   return createMcpError(
     SlackErrorCode.InternalError,
-    `${context}: ${error.message || 'Slack API error'}`,
+    `${context}: ${slackError ? `${slackError} - ` : ''}${error.message || 'Slack API error'}`,
     {
       status,
       slackError,
