@@ -5,7 +5,9 @@
     "noEmit": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "ui/**/*",
+    "scripts/**/*"
   ],
   "exclude": [
     "node_modules",

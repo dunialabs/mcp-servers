@@ -1,5 +1,5 @@
 # ghcr.io/dunialabs/mcp-servers/intercom - Docker image for STDIO mode
-FROM node:18-alpine
+FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/intercom"
 LABEL org.opencontainers.image.description="Intercom MCP Server - Manage conversations, contacts, and more through Intercom API"

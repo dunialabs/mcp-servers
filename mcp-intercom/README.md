@@ -16,6 +16,7 @@ A Model Context Protocol (MCP) server that integrates with Intercom API v2.11, e
 - **Multi-Region Support**: US, EU, and AU region endpoints
 - **OAuth Integration**: Seamless token management via Console platform
 - **Docker Support**: Multi-platform images (amd64/arm64)
+- **MCP Apps Views**: Contact and conversation list/detail views for compatible clients
 - **Complete TypeScript**: Strict typing with Zod validation
 - **Production Ready**: Error handling, logging, timeout management
 
@@ -49,11 +50,32 @@ A Model Context Protocol (MCP) server that integrates with Intercom API v2.11, e
 
 ---
 
+## MCP Apps
+
+The following tools expose MCP Apps views in compatible clients while preserving the original
+text fallback for unsupported hosts:
+
+- `intercomListContacts`
+- `intercomSearchContacts`
+- `intercomListConversations`
+- `intercomGetConversation`
+
+Build the server with Apps assets using:
+
+```bash
+npm run build
+```
+
+`npm run build` now includes `npm run build:app`, which compiles the embedded HTML resources used
+by the Intercom list and conversation detail views.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ or Docker
+- Node.js 20+ or Docker
 - Intercom OAuth access token (see [Authentication](#authentication))
 
 ### Installation

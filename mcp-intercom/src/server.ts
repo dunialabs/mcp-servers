@@ -5,6 +5,11 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 
 // Contact tools
@@ -46,6 +51,17 @@ import {
 import { logger } from './utils/logger.js';
 import type { ServerConfig } from './types/index.js';
 import { normalizeAccessToken } from './auth/token.js';
+import { readAppHtml } from './utils/app-resource.js';
+import type {
+  Contact,
+  ContactList,
+  Conversation,
+  ConversationList,
+  SearchResponse,
+} from './types/index.js';
+
+const INTERCOM_BROWSER_VIEW_URI = 'ui://intercom/browser-view.html';
+const INTERCOM_CONVERSATION_VIEW_URI = 'ui://intercom/conversation-view.html';
 
 /**
  * Tool schemas using Zod
@@ -265,8 +281,79 @@ export class IntercomMCPServer {
 
     // Register tools
     this.registerTools();
+    this.registerAppResources();
 
     logger.info('[Server] All tools registered successfully');
+  }
+
+  private parseJson<T>(value: string): T {
+    return JSON.parse(value) as T;
+  }
+
+  private contactListPayload(raw: string, mode: 'list' | 'search', query?: SearchResponse<Contact> extends never ? never : unknown) {
+    if (mode === 'search') {
+      const parsed = this.parseJson<SearchResponse<Contact>>(raw);
+      return {
+        kind: 'intercom-contact-list' as const,
+        mode,
+        query: typeof query === 'object' ? JSON.stringify(query) : String(query ?? ''),
+        count: parsed.total_count ?? parsed.data.length,
+        hasMore: Boolean(parsed.pages?.next?.starting_after),
+        nextCursor: parsed.pages?.next?.starting_after ?? null,
+        contacts: parsed.data,
+      };
+    }
+
+    const parsed = this.parseJson<ContactList>(raw);
+    return {
+      kind: 'intercom-contact-list' as const,
+      mode,
+      count: parsed.total_count ?? parsed.data.length,
+      hasMore: Boolean(parsed.pages?.next?.starting_after),
+      nextCursor: parsed.pages?.next?.starting_after ?? null,
+      contacts: parsed.data,
+    };
+  }
+
+  private conversationListPayload(raw: string) {
+    const parsed = this.parseJson<ConversationList>(raw);
+    return {
+      kind: 'intercom-conversation-list' as const,
+      count: parsed.total_count ?? parsed.conversations.length,
+      hasMore: Boolean(parsed.pages?.next?.starting_after),
+      nextCursor: parsed.pages?.next?.starting_after ?? null,
+      conversations: parsed.conversations,
+    };
+  }
+
+  private conversationDetailPayload(raw: string) {
+    const parsed = this.parseJson<Conversation>(raw);
+    return {
+      kind: 'intercom-conversation-detail' as const,
+      conversation: parsed,
+    };
+  }
+
+  private registerAppResources() {
+    registerAppResource(this.server, 'intercom-browser-view', INTERCOM_BROWSER_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: INTERCOM_BROWSER_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('intercom-browser-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'intercom-conversation-view', INTERCOM_CONVERSATION_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: INTERCOM_CONVERSATION_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('intercom-conversation-view.html'),
+        },
+      ],
+    }));
   }
 
   /**
@@ -275,20 +362,30 @@ export class IntercomMCPServer {
   private registerTools() {
     // ==================== Contact Tools ====================
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'intercomListContacts',
       {
         title: 'Intercom - List Contacts',
         description: 'List all contacts (users and leads) in Intercom with pagination support.',
-        inputSchema: ListContactsParamsSchema,
+        inputSchema: ListContactsParamsSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: INTERCOM_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: { per_page?: number; starting_after?: string }) => {
         const result = await listContacts(params);
-        return { content: [{ type: 'text' as const, text: result }] };
+        return {
+          content: [{ type: 'text' as const, text: result }],
+          structuredContent: this.contactListPayload(result, 'list'),
+        };
       }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'intercomSearchContacts',
       {
         title: 'Intercom - Search Contacts',
@@ -306,14 +403,22 @@ Common search fields:
 - owner_id: Assigned admin ID
 - external_id: Your system's user ID
 
-Example queries:
+        Example queries:
 - Find by email: { "operator": "AND", "value": [{ "field": "email", "operator": "=", "value": "john@example.com" }] }
 - Find leads: { "operator": "AND", "value": [{ "field": "role", "operator": "=", "value": "lead" }] }`,
-        inputSchema: SearchContactsParamsSchema,
+        inputSchema: SearchContactsParamsSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: INTERCOM_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: { query: unknown; pagination?: unknown }) => {
         const result = await searchContacts(params as Parameters<typeof searchContacts>[0]);
-        return { content: [{ type: 'text' as const, text: result }] };
+        return {
+          content: [{ type: 'text' as const, text: result }],
+          structuredContent: this.contactListPayload(result, 'search', params.query),
+        };
       }
     );
 
@@ -349,16 +454,25 @@ At minimum, you should provide an email or external_id.
 
     // ==================== Conversation Tools ====================
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'intercomListConversations',
       {
         title: 'Intercom - List Conversations',
         description: 'List all conversations with pagination support. Returns conversation metadata without full message history.',
-        inputSchema: ListConversationsParamsSchema,
+        inputSchema: ListConversationsParamsSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: INTERCOM_BROWSER_VIEW_URI,
+          },
+        },
       },
       async (params: { per_page?: number; starting_after?: string }) => {
         const result = await listConversations(params);
-        return { content: [{ type: 'text' as const, text: result }] };
+        return {
+          content: [{ type: 'text' as const, text: result }],
+          structuredContent: this.conversationListPayload(result),
+        };
       }
     );
 
@@ -391,16 +505,25 @@ Example queries:
       }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'intercomGetConversation',
       {
         title: 'Intercom - Get Conversation',
         description: 'Get detailed information about a specific conversation, including all message parts.',
-        inputSchema: GetConversationParamsSchema,
+        inputSchema: GetConversationParamsSchema.shape,
+        _meta: {
+          ui: {
+            resourceUri: INTERCOM_CONVERSATION_VIEW_URI,
+          },
+        },
       },
       async (params: { conversationId: string; display_as?: 'plaintext' }) => {
         const result = await getConversation(params.conversationId, { display_as: params.display_as });
-        return { content: [{ type: 'text' as const, text: result }] };
+        return {
+          content: [{ type: 'text' as const, text: result }],
+          structuredContent: this.conversationDetailPayload(result),
+        };
       }
     );
 
