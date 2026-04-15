@@ -10,6 +10,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY ui/ ./ui/
 
 # Install dependencies (including dev dependencies for build)
 # The prepare script will automatically run npm run build
