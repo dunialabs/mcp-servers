@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-zendesk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Zendesk MCP Server - Integrate Zendesk tickets, users, organizations, and more with Claude through Model Context Protocol",
   "main": "dist/stdio.js",
   "type": "module",

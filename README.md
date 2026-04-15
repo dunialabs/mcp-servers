@@ -588,7 +588,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Slack | `ghcr.io/dunialabs/mcp-servers/slack` | v1.0.2 |
 | Stripe | `ghcr.io/dunialabs/mcp-servers/stripe` | v1.0.0 |
 | Teams | `ghcr.io/dunialabs/mcp-servers/teams` | v0.1.0 |
-| Zendesk | `ghcr.io/dunialabs/mcp-servers/zendesk` | v1.0.0 |
+| Zendesk | `ghcr.io/dunialabs/mcp-servers/zendesk` | v1.0.1 |
 
 ### Pull Images
 
