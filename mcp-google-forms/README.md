@@ -2,6 +2,16 @@
 
 Google Forms MCP server for PETA ecosystem with STDIO transport.
 
+## MCP Apps
+
+Compatible MCP Apps clients can render richer views for:
+
+- `gformsGetForm`
+- `gformsListResponses`
+- `gformsGetResponse`
+
+These tools keep their original text fallback for non-Apps clients and add `structuredContent` plus App resources for compatible hosts.
+
 ## Tools (12)
 
 1. `gformsCreateForm`
@@ -107,6 +117,19 @@ Node.js configuration:
 
 ```bash
 ./build-docker.sh
+```
+
+## Build Notes
+
+`npm run build` now runs both:
+
+- server TypeScript compilation
+- `npm run build:app` for the Forms MCP Apps HTML resources
+
+If you change files under `ui/`, rebuild before testing:
+
+```bash
+npm run build
 ```
 
 ## Tool Notes

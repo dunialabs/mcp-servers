@@ -60,6 +60,34 @@ interface FormShape {
   publishSettings?: Record<string, unknown>;
 }
 
+interface FormItemShape {
+  itemId?: string;
+  title?: string;
+  description?: string;
+  questionItem?: {
+    question?: {
+      questionId?: string;
+      required?: boolean;
+      grading?: unknown;
+      textQuestion?: {
+        paragraph?: boolean;
+      };
+      choiceQuestion?: {
+        type?: string;
+        options?: Array<{ value?: string; isOther?: boolean }>;
+      };
+      fileUploadQuestion?: Record<string, unknown>;
+      rowQuestion?: Record<string, unknown>;
+      scaleQuestion?: Record<string, unknown>;
+      dateQuestion?: Record<string, unknown>;
+      timeQuestion?: Record<string, unknown>;
+    };
+  };
+  pageBreakItem?: Record<string, unknown>;
+  imageItem?: Record<string, unknown>;
+  videoItem?: Record<string, unknown>;
+}
+
 interface BatchUpdateResponse {
   form?: FormShape;
   replies?: unknown[];
@@ -125,6 +153,50 @@ function summarizeForm(form: FormShape | null | undefined) {
     settings: form.settings,
     publishSettings: form.publishSettings,
   };
+}
+
+function summarizeFormItems(items: FormItemShape[] = []) {
+  return items.map((item, index) => {
+    const question = item.questionItem?.question;
+    let kind = 'item';
+    let details: Record<string, unknown> = {};
+
+    if (question?.textQuestion) {
+      kind = question.textQuestion.paragraph ? 'paragraph' : 'text';
+    } else if (question?.choiceQuestion) {
+      kind = question.choiceQuestion.type?.toLowerCase() ?? 'choice';
+      details = {
+        options: (question.choiceQuestion.options ?? []).map((option) => option.value ?? 'Other'),
+      };
+    } else if (question?.fileUploadQuestion) {
+      kind = 'file-upload';
+    } else if (question?.rowQuestion) {
+      kind = 'row';
+    } else if (question?.scaleQuestion) {
+      kind = 'scale';
+    } else if (question?.dateQuestion) {
+      kind = 'date';
+    } else if (question?.timeQuestion) {
+      kind = 'time';
+    } else if (item.pageBreakItem) {
+      kind = 'section-break';
+    } else if (item.imageItem) {
+      kind = 'image';
+    } else if (item.videoItem) {
+      kind = 'video';
+    }
+
+    return {
+      index,
+      itemId: item.itemId,
+      title: item.title ?? `Item ${index + 1}`,
+      description: item.description ?? null,
+      kind,
+      required: question?.required ?? false,
+      questionId: question?.questionId ?? null,
+      ...details,
+    };
+  });
 }
 
 function summarizeResponse(response: Record<string, unknown> | null | undefined) {
@@ -296,13 +368,21 @@ export async function formsGetForm(params: GetFormParams) {
     'formsGetForm'
   );
 
+  const summary = summarizeForm(form);
+  const items = summarizeFormItems((form.items as FormItemShape[] | undefined) ?? []);
+
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify({ form: summarizeForm(form) }, null, 2),
+        text: JSON.stringify({ form: summary }, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'gforms-form-detail',
+      form: summary,
+      items,
+    },
   };
 }
 

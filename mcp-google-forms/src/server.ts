@@ -1,9 +1,15 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { z } from 'zod';
 import { validateTokenFormat } from './auth/token.js';
 import { logger } from './utils/logger.js';
 import { getServerVersion } from './utils/version.js';
+import { readAppHtml } from './utils/app-resource.js';
 import {
   AddMultipleChoiceQuestionInputSchema,
   AddTextQuestionInputSchema,
@@ -86,7 +92,40 @@ export class GoogleFormsMcpServer {
     );
 
     this.registerTools();
+    this.registerAppResources();
     logger.info('[Server] Google Forms MCP Server initialized');
+  }
+
+  private registerAppResources() {
+    registerAppResource(this.server, 'gforms-form-view', 'ui://google-forms/form-view.html', {}, async () => ({
+      contents: [
+        {
+          uri: 'ui://google-forms/form-view.html',
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('gforms-form-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'gforms-response-list-view', 'ui://google-forms/response-list-view.html', {}, async () => ({
+      contents: [
+        {
+          uri: 'ui://google-forms/response-list-view.html',
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('gforms-response-list-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'gforms-response-detail-view', 'ui://google-forms/response-detail-view.html', {}, async () => ({
+      contents: [
+        {
+          uri: 'ui://google-forms/response-detail-view.html',
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('gforms-response-detail-view.html'),
+        },
+      ],
+    }));
   }
 
   private registerTools() {
@@ -100,11 +139,17 @@ export class GoogleFormsMcpServer {
       async (params) => formsCreateForm(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gformsGetForm',
       {
         title: 'GForms - Get Form',
         description: 'Get a Google Form definition by formId.',
+        _meta: {
+          ui: {
+            resourceUri: 'ui://google-forms/form-view.html',
+          },
+        },
         inputSchema: GetFormInputSchema,
       },
       async (params) => formsGetForm(params)
@@ -150,21 +195,33 @@ export class GoogleFormsMcpServer {
       async (params) => formsAddMultipleChoiceQuestion(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gformsListResponses',
       {
         title: 'GForms - List Responses',
         description: 'List form responses with pagination and optional filter.',
+        _meta: {
+          ui: {
+            resourceUri: 'ui://google-forms/response-list-view.html',
+          },
+        },
         inputSchema: ListResponsesInputSchema,
       },
       async (params) => formsListResponses(params)
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'gformsGetResponse',
       {
         title: 'GForms - Get Response',
         description: 'Get one form response by responseId.',
+        _meta: {
+          ui: {
+            resourceUri: 'ui://google-forms/response-detail-view.html',
+          },
+        },
         inputSchema: GetResponseInputSchema,
       },
       async (params) => formsGetResponse(params)
