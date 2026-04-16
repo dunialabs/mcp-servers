@@ -18,28 +18,30 @@ A Model Context Protocol (MCP) server that integrates with Stripe API, enabling 
 - 🐳 **Docker Support**: Multi-platform images (amd64/arm64)
 - 📝 **Complete TypeScript**: Strict typing with Zod validation
 - 🚀 **Production Ready**: Error handling, logging, audit trail
+- 🖥️ **MCP Apps Views**: Visual customer, payment, and invoice views for supported clients
 
 ---
 
-## 📋 Available Tools (28)
+## 📋 Available Tools (29)
 
 ### Quick Reference
 
 | Category | Tools | Purpose |
 |----------|-------|---------|
-| **Payment Intents** | 5 | One-time payment processing |
+| **Payments** | 6 | One-time payments and invoice browsing |
 | **Customers** | 5 | Customer data management |
 | **Refunds** | 3 | Payment refunds and reversals |
 | **Products** | 5 | Product catalog management |
 | **Prices** | 4 | Pricing models (one-time & recurring) |
 | **Subscriptions** | 6 | Recurring billing & subscription lifecycle |
 
-### Payment Intent Tools (5)
+### Payment Tools (6)
 - `stripeCreatePaymentIntent` - Create a payment intent for processing payments
 - `stripeConfirmPaymentIntent` - Confirm a payment intent to complete payment
 - `stripeCancelPaymentIntent` - Cancel a payment intent before completion
 - `stripeGetPaymentIntent` - Retrieve payment intent details by ID
 - `stripeListPaymentIntents` - List payment intents (filter by customer, limit, pagination)
+- `stripeListInvoices` - List invoices (filter by customer, status, limit, pagination)
 
 ### Customer Tools (5)
 - `stripeCreateCustomer` - Create a new customer record
@@ -47,6 +49,17 @@ A Model Context Protocol (MCP) server that integrates with Stripe API, enabling 
 - `stripeUpdateCustomer` - Update customer information
 - `stripeListCustomers` - List customers with optional filters
 - `stripeDeleteCustomer` - Delete a customer record
+
+### MCP Apps Views
+
+Supported clients can render visual views for:
+
+- `stripeListCustomers`
+- `stripeListPaymentIntents`
+- `stripeListInvoices`
+- `stripeGetCustomer`
+
+These tools keep the original text/JSON fallback for non-Apps clients and add structured content for App-aware hosts.
 
 ### Refund Tools (3)
 - `stripeCreateRefund` - Create a full or partial refund
@@ -80,7 +93,7 @@ A Model Context Protocol (MCP) server that integrates with Stripe API, enabling 
 
 ### Prerequisites
 
-- Node.js 18+ or Docker
+- Node.js 20+ or Docker
 - Stripe account with API keys ([Get API keys](https://dashboard.stripe.com/apikeys))
 
 ### Installation
@@ -111,6 +124,8 @@ npm run dev
 npm run build
 npm start
 ```
+
+`npm run build` now includes `npm run build:app`, which generates the MCP Apps HTML resources under `dist/ui/ui/`.
 
 #### Option 3: Docker
 

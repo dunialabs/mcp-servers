@@ -3,15 +3,19 @@
  * Provides Stripe API integration via Model Context Protocol
  */
 
+import Stripe from 'stripe';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
   Notification,
+  ReadResourceRequestSchema,
   type CallToolRequest,
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
+import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { logger } from './utils/logger.js';
 import { validateEnvironment, validateConnectOperation } from './utils/errors.js';
@@ -60,6 +64,8 @@ import {
   resumeSubscription,
   listSubscriptions,
 } from './tools/subscriptions.js';
+import { listInvoices } from './tools/invoices.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 // ==================== Zod Schemas ====================
 
@@ -268,6 +274,102 @@ const ListSubscriptionsSchema = z.object({
   starting_after: z.string().optional().describe('Cursor for pagination'),
 });
 
+const ListInvoicesSchema = z.object({
+  customer: z.string().optional().describe('Filter by customer ID'),
+  status: z.enum(['draft', 'open', 'paid', 'uncollectible', 'void']).optional().describe('Filter by invoice status'),
+  limit: z.number().min(1).max(100).optional().describe('Number of results (1-100, default: 10)'),
+  starting_after: z.string().optional().describe('Cursor for pagination'),
+});
+
+const STRIPE_BROWSER_VIEW_URI = 'ui://stripe/browser-view.html';
+const STRIPE_CUSTOMER_VIEW_URI = 'ui://stripe/customer-view.html';
+const APP_RESOURCES = [
+  {
+    uri: STRIPE_BROWSER_VIEW_URI,
+    name: 'Stripe Browser View',
+    description: 'Interactive list view for Stripe customers, payments, and invoices.',
+    mimeType: RESOURCE_MIME_TYPE,
+    filename: 'stripe-browser-view.html',
+  },
+  {
+    uri: STRIPE_CUSTOMER_VIEW_URI,
+    name: 'Stripe Customer View',
+    description: 'Interactive detail view for a Stripe customer.',
+    mimeType: RESOURCE_MIME_TYPE,
+    filename: 'stripe-customer-view.html',
+  },
+] as const;
+
+function jsonResult(value: unknown, structuredContent?: Record<string, unknown>) {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(value, null, 2),
+      },
+    ],
+    ...(structuredContent ? { structuredContent } : {}),
+  };
+}
+
+function summarizeCustomer(customer: Stripe.Customer) {
+  return {
+    id: customer.id,
+    name: customer.name ?? null,
+    email: customer.email ?? null,
+    phone: customer.phone ?? null,
+    description: customer.description ?? null,
+    currency: customer.currency ?? null,
+    balance: customer.balance ?? null,
+    delinquent: customer.delinquent ?? null,
+    created: customer.created ?? null,
+    address:
+      customer.address && Object.keys(customer.address).length > 0
+        ? {
+            line1: customer.address.line1 ?? null,
+            line2: customer.address.line2 ?? null,
+            city: customer.address.city ?? null,
+            state: customer.address.state ?? null,
+            postal_code: customer.address.postal_code ?? null,
+            country: customer.address.country ?? null,
+          }
+        : null,
+    metadata: customer.metadata ?? {},
+  };
+}
+
+function summarizePaymentIntent(payment: Stripe.PaymentIntent) {
+  return {
+    id: payment.id,
+    customerId:
+      typeof payment.customer === 'string'
+        ? payment.customer
+        : payment.customer?.id ?? null,
+    description: payment.description ?? null,
+    amount: payment.amount ?? null,
+    currency: payment.currency ?? null,
+    status: payment.status ?? null,
+    created: payment.created ?? null,
+  };
+}
+
+function summarizeInvoice(invoice: Stripe.Invoice) {
+  return {
+    id: invoice.id,
+    number: invoice.number ?? null,
+    customerId:
+      typeof invoice.customer === 'string'
+        ? invoice.customer
+        : invoice.customer?.id ?? null,
+    amountDue: invoice.amount_due ?? null,
+    amountPaid: invoice.amount_paid ?? null,
+    currency: invoice.currency ?? null,
+    status: invoice.status ?? null,
+    dueDate: invoice.due_date ?? null,
+    created: invoice.created ?? null,
+  };
+}
+
 // ==================== Tool Definitions ====================
 
 const TOOLS: Tool[] = [
@@ -328,6 +430,11 @@ const TOOLS: Tool[] = [
   {
     name: 'stripeListPaymentIntents',
     description: 'List payment intents with optional filters. Use this to view payment history. Note: Status filtering is not supported by Stripe API.',
+    _meta: {
+      ui: {
+        resourceUri: STRIPE_BROWSER_VIEW_URI,
+      },
+    },
     inputSchema: {
       type: 'object',
       properties: {
@@ -356,6 +463,11 @@ const TOOLS: Tool[] = [
   {
     name: 'stripeGetCustomer',
     description: 'Retrieve a customer by ID. Use this to get customer details.',
+    _meta: {
+      ui: {
+        resourceUri: STRIPE_CUSTOMER_VIEW_URI,
+      },
+    },
     inputSchema: {
       type: 'object',
       properties: {
@@ -383,10 +495,33 @@ const TOOLS: Tool[] = [
   {
     name: 'stripeListCustomers',
     description: 'List all customers with optional filters. Use this to browse customer records.',
+    _meta: {
+      ui: {
+        resourceUri: STRIPE_BROWSER_VIEW_URI,
+      },
+    },
     inputSchema: {
       type: 'object',
       properties: {
         email: { type: 'string', description: 'Filter by email address' },
+        limit: { type: 'number', description: 'Number of results (1-100)' },
+        starting_after: { type: 'string', description: 'Cursor for pagination' },
+      },
+    },
+  },
+  {
+    name: 'stripeListInvoices',
+    description: 'List invoices with optional filters. Use this to review billing records.',
+    _meta: {
+      ui: {
+        resourceUri: STRIPE_BROWSER_VIEW_URI,
+      },
+    },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        customer: { type: 'string', description: 'Filter by customer ID' },
+        status: { type: 'string', enum: ['draft', 'open', 'paid', 'uncollectible', 'void'], description: 'Filter by invoice status' },
         limit: { type: 'number', description: 'Number of results (1-100)' },
         starting_after: { type: 'string', description: 'Cursor for pagination' },
       },
@@ -655,6 +790,7 @@ export function createServer() {
     {
       capabilities: {
         tools: {},
+        resources: {},
       },
     }
   );
@@ -663,6 +799,35 @@ export function createServer() {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: TOOLS,
   }));
+
+  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+    resources: APP_RESOURCES.map(({ uri, name, description, mimeType }) => ({
+      uri,
+      name,
+      description,
+      mimeType,
+    })),
+  }));
+
+  server.setRequestHandler(
+    ReadResourceRequestSchema,
+    async (request: { params: { uri: string } }) => {
+      const resource = APP_RESOURCES.find((item) => item.uri === request.params.uri);
+      if (!resource) {
+        throw new Error(`Unknown resource: ${request.params.uri}`);
+      }
+
+      return {
+        contents: [
+          {
+            uri: resource.uri,
+            mimeType: resource.mimeType,
+            text: await readAppHtml(resource.filename),
+          },
+        ],
+      };
+    }
+  );
 
   const tokenUpdateSchema = z.object({
     method: z.literal('notifications/token/update'),
@@ -781,14 +946,15 @@ export function createServer() {
         case 'stripeListPaymentIntents': {
           const params = ListPaymentIntentsSchema.parse(args);
           const result = await listPaymentIntents(params);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(result, null, 2),
-              },
-            ],
-          };
+          return jsonResult(result, {
+            kind: 'stripe-payment-list',
+            count: result.data.length,
+            hasMore: result.has_more,
+            filters: {
+              customer: params.customer ?? null,
+            },
+            payments: result.data.map((item) => summarizePaymentIntent(item)),
+          });
         }
 
         // Customer Tools
@@ -808,14 +974,10 @@ export function createServer() {
         case 'stripeGetCustomer': {
           const params = GetCustomerSchema.parse(args);
           const result = await getCustomer(params.customer_id);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(result, null, 2),
-              },
-            ],
-          };
+          return jsonResult(result, {
+            kind: 'stripe-customer-detail',
+            customer: summarizeCustomer(result),
+          });
         }
 
         case 'stripeUpdateCustomer': {
@@ -834,14 +996,15 @@ export function createServer() {
         case 'stripeListCustomers': {
           const params = ListCustomersSchema.parse(args);
           const result = await listCustomers(params);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(result, null, 2),
-              },
-            ],
-          };
+          return jsonResult(result, {
+            kind: 'stripe-customer-list',
+            count: result.data.length,
+            hasMore: result.has_more,
+            filters: {
+              email: params.email ?? null,
+            },
+            customers: result.data.map((item) => summarizeCustomer(item)),
+          });
         }
 
         case 'stripeDeleteCustomer': {
@@ -895,6 +1058,21 @@ export function createServer() {
               },
             ],
           };
+        }
+
+        case 'stripeListInvoices': {
+          const params = ListInvoicesSchema.parse(args);
+          const result = await listInvoices(params);
+          return jsonResult(result, {
+            kind: 'stripe-invoice-list',
+            count: result.data.length,
+            hasMore: result.has_more,
+            filters: {
+              customer: params.customer ?? null,
+              status: params.status ?? null,
+            },
+            invoices: result.data.map((item) => summarizeInvoice(item)),
+          });
         }
 
         // Product Tools
