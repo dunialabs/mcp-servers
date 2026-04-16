@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-github",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "GitHub MCP Server - Integrate GitHub repositories, issues, pull requests, and more with Claude through Model Context Protocol",
   "main": "dist/stdio.js",
   "type": "module",
@@ -8,7 +8,8 @@
     "peta-mcp-github": "./dist/stdio.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:app",
+    "build:app": "node scripts/build-apps.mjs",
     "dev": "tsx watch src/stdio.ts",
     "start": "node dist/stdio.js",
     "clean": "rm -rf dist",
@@ -16,8 +17,8 @@
     "test:watch": "vitest watch",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
+    "lint": "eslint src ui scripts --ext .ts,.mjs",
+    "lint:fix": "eslint src ui scripts --ext .ts,.mjs --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "type-check": "tsc --noEmit",
@@ -45,6 +46,7 @@
   "author": "PETA Team",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.5.0",
     "@modelcontextprotocol/sdk": "^1.23.0",
     "dotenv": "^16.4.5",
     "zod": "^3.23.8"
@@ -57,9 +59,11 @@
     "prettier": "^3.2.5",
     "tsx": "^4.7.1",
     "typescript": "^5.7.2",
+    "vite": "^6.4.2",
+    "vite-plugin-singlefile": "^2.3.0",
     "vitest": "^4.0.5"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

@@ -18,6 +18,24 @@ import {
 import { validateRepositoryFormat, validateIssueNumber } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
+function formatIssueItem(issue: any) {
+  return {
+    number: issue.number,
+    title: issue.title,
+    body: issue.body,
+    state: issue.state,
+    user: issue.user?.login,
+    labels: issue.labels.map((l: any) => l.name),
+    comments: issue.comments,
+    created_at: issue.created_at,
+    updated_at: issue.updated_at,
+    closed_at: issue.closed_at,
+    url: issue.html_url,
+    repository_url: issue.repository_url,
+    pull_request: issue.pull_request ? true : false,
+  };
+}
+
 /**
  * List issues in a repository
  */
@@ -55,17 +73,7 @@ export async function listIssues(params: {
 
   const issues = await githubGet(`/repos/${repo}/issues${query}`);
 
-  const formatted = issues.map((issue: any) => ({
-    number: issue.number,
-    title: issue.title,
-    state: issue.state,
-    user: issue.user.login,
-    labels: issue.labels.map((l: any) => l.name),
-    comments: issue.comments,
-    created_at: issue.created_at,
-    updated_at: issue.updated_at,
-    url: issue.html_url,
-  }));
+  const formatted = issues.map((issue: any) => formatIssueItem(issue));
 
   return {
     content: [
@@ -74,6 +82,14 @@ export async function listIssues(params: {
         text: JSON.stringify(formatted, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'github-issue-list',
+      mode: 'list',
+      repo,
+      state,
+      count: formatted.length,
+      issues: formatted,
+    },
   };
 }
 

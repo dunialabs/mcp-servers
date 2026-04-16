@@ -4,6 +4,11 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { logger } from './utils/logger.js';
 
@@ -50,6 +55,10 @@ import { createOrUpdateFile, deleteFile } from './tools/file-operations.js';
 import { searchCode, searchIssues } from './tools/search.js';
 import { normalizeAccessToken } from './auth/token.js';
 import { getServerVersion } from './utils/version.js';
+import { readAppHtml } from './utils/app-resource.js';
+
+const GITHUB_BROWSER_VIEW_URI = 'ui://github/browser-view.html';
+const GITHUB_PULL_REQUEST_VIEW_URI = 'ui://github/pull-request-view.html';
 
 /**
  * GitHub MCP Server Class
@@ -138,7 +147,31 @@ export class GitHubMcpServer {
     // Register Search Tools
     this.registerSearchTools();
 
+    this.registerAppResources();
+
     logger.info('[Server] All tools registered successfully');
+  }
+
+  private registerAppResources() {
+    registerAppResource(this.server, 'github-browser-view', GITHUB_BROWSER_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: GITHUB_BROWSER_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('github-browser-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'github-pull-request-view', GITHUB_PULL_REQUEST_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: GITHUB_PULL_REQUEST_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('github-pull-request-view.html'),
+        },
+      ],
+    }));
   }
 
   /**
@@ -146,12 +179,17 @@ export class GitHubMcpServer {
    */
   private registerRepositoryTools() {
     // List Repositories
-    this.server.registerTool(
+    registerAppTool(this.server,
       'githubListRepositories',
       {
         title: 'GitHub - List Repositories',
         description:
           'List repositories for a user or the authenticated user. Supports filtering and sorting.',
+        _meta: {
+          ui: {
+            resourceUri: GITHUB_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: {
           username: z.string().optional().describe('GitHub username (optional, defaults to authenticated user)'),
           type: z.enum(['all', 'owner', 'public', 'private', 'member']).optional().describe('Repository type filter'),
@@ -247,11 +285,16 @@ export class GitHubMcpServer {
    */
   private registerIssueTools() {
     // List Issues
-    this.server.registerTool(
+    registerAppTool(this.server,
       'githubListIssues',
       {
         title: 'GitHub - List Issues',
         description: 'List issues in a repository with filtering and sorting options.',
+        _meta: {
+          ui: {
+            resourceUri: GITHUB_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: {
           repo: z.string().min(1).describe('Repository in "owner/repo" format (required)'),
           state: z.enum(['open', 'closed', 'all']).optional().describe('Issue state filter'),
@@ -335,11 +378,16 @@ export class GitHubMcpServer {
    */
   private registerPullRequestTools() {
     // List Pull Requests
-    this.server.registerTool(
+    registerAppTool(this.server,
       'githubListPullRequests',
       {
         title: 'GitHub - List Pull Requests',
         description: 'List pull requests in a repository.',
+        _meta: {
+          ui: {
+            resourceUri: GITHUB_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: {
           repo: z.string().min(1).describe('Repository in "owner/repo" format (required)'),
           state: z.enum(['open', 'closed', 'all']).optional().describe('PR state filter'),
@@ -355,11 +403,16 @@ export class GitHubMcpServer {
     );
 
     // Get Pull Request
-    this.server.registerTool(
+    registerAppTool(this.server,
       'githubGetPullRequest',
       {
         title: 'GitHub - Get Pull Request',
         description: 'Get detailed information about a specific pull request.',
+        _meta: {
+          ui: {
+            resourceUri: GITHUB_PULL_REQUEST_VIEW_URI,
+          },
+        },
         inputSchema: {
           repo: z.string().min(1).describe('Repository in "owner/repo" format (required)'),
           pull_number: z.number().min(1).describe('Pull request number (required)'),
@@ -808,11 +861,16 @@ export class GitHubMcpServer {
     );
 
     // Search Issues
-    this.server.registerTool(
+    registerAppTool(this.server,
       'githubSearchIssues',
       {
         title: 'GitHub - Search Issues and Pull Requests',
         description: 'Search for issues and pull requests across GitHub.',
+        _meta: {
+          ui: {
+            resourceUri: GITHUB_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: {
           query: z.string().min(1).describe('Search query (required). Examples: "is:open is:issue label:bug"'),
           sort: z.enum(['comments', 'reactions', 'reactions-+1', 'reactions--1', 'reactions-smile', 'reactions-thinking_face', 'reactions-heart', 'reactions-tada', 'interactions', 'created', 'updated']).optional().describe('Sort field'),

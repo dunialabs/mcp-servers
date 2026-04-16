@@ -9,6 +9,12 @@
 import { githubGet, buildQueryString } from '../utils/github-api.js';
 import { logger } from '../utils/logger.js';
 
+function extractRepoName(repositoryUrl?: string): string | null {
+  if (!repositoryUrl) return null;
+  const match = repositoryUrl.match(/repos\/([^/]+\/[^/]+)$/);
+  return match ? match[1] : null;
+}
+
 /**
  * Search code across GitHub
  *
@@ -67,6 +73,18 @@ export async function searchCode(params: {
         text: JSON.stringify(formatted, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'github-issue-list',
+      mode: 'search',
+      query,
+      total_count: formatted.total_count,
+      incomplete_results: formatted.incomplete_results,
+      count: formatted.items.length,
+      issues: formatted.items.map((item: any) => ({
+        ...item,
+        repo: extractRepoName(item.repository_url),
+      })),
+    },
   };
 }
 
@@ -128,5 +146,17 @@ export async function searchIssues(params: {
         text: JSON.stringify(formatted, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'github-issue-list',
+      mode: 'search',
+      query,
+      total_count: formatted.total_count,
+      incomplete_results: formatted.incomplete_results,
+      count: formatted.items.length,
+      issues: formatted.items.map((item: any) => ({
+        ...item,
+        repo: extractRepoName(item.repository_url),
+      })),
+    },
   };
 }

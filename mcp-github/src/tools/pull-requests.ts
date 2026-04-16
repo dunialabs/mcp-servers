@@ -18,6 +18,33 @@ import {
 import { validateRepositoryFormat, validateIssueNumber } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
+function formatPullRequestItem(pr: any) {
+  return {
+    number: pr.number,
+    title: pr.title,
+    body: pr.body,
+    state: pr.state,
+    user: pr.user?.login,
+    head: pr.head?.user?.login && pr.head?.ref ? `${pr.head.user.login}:${pr.head.ref}` : pr.head?.ref,
+    base: pr.base?.ref,
+    draft: pr.draft,
+    mergeable: pr.mergeable,
+    mergeable_state: pr.mergeable_state,
+    merged: pr.merged,
+    comments: pr.comments,
+    commits: pr.commits,
+    additions: pr.additions,
+    deletions: pr.deletions,
+    changed_files: pr.changed_files,
+    created_at: pr.created_at,
+    updated_at: pr.updated_at,
+    merged_at: pr.merged_at,
+    closed_at: pr.closed_at,
+    url: pr.html_url,
+    labels: pr.labels?.map((l: any) => l.name) ?? [],
+  };
+}
+
 /**
  * List pull requests in a repository
  */
@@ -58,24 +85,7 @@ export async function listPullRequests(params: {
 
   const prs = await githubGet(`/repos/${repo}/pulls${query}`);
 
-  const formatted = prs.map((pr: any) => ({
-    number: pr.number,
-    title: pr.title,
-    state: pr.state,
-    user: pr.user.login,
-    head: `${pr.head.user.login}:${pr.head.ref}`,
-    base: pr.base.ref,
-    draft: pr.draft,
-    mergeable: pr.mergeable,
-    comments: pr.comments,
-    commits: pr.commits,
-    additions: pr.additions,
-    deletions: pr.deletions,
-    changed_files: pr.changed_files,
-    created_at: pr.created_at,
-    updated_at: pr.updated_at,
-    url: pr.html_url,
-  }));
+  const formatted = prs.map((pr: any) => formatPullRequestItem(pr));
 
   return {
     content: [
@@ -84,6 +94,13 @@ export async function listPullRequests(params: {
         text: JSON.stringify(formatted, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'github-pull-request-list',
+      repo,
+      state,
+      count: formatted.length,
+      pullRequests: formatted,
+    },
   };
 }
 
@@ -101,11 +118,7 @@ export async function getPullRequest(params: { repo: string; pull_number: number
   const pr = await githubGet(`/repos/${repo}/pulls/${pull_number}`);
 
   const formatted = {
-    number: pr.number,
-    title: pr.title,
-    body: pr.body,
-    state: pr.state,
-    user: pr.user.login,
+    ...formatPullRequestItem(pr),
     head: {
       ref: pr.head.ref,
       sha: pr.head.sha,
@@ -116,20 +129,6 @@ export async function getPullRequest(params: { repo: string; pull_number: number
       sha: pr.base.sha,
       repo: pr.base.repo.full_name,
     },
-    draft: pr.draft,
-    mergeable: pr.mergeable,
-    mergeable_state: pr.mergeable_state,
-    merged: pr.merged,
-    comments: pr.comments,
-    commits: pr.commits,
-    additions: pr.additions,
-    deletions: pr.deletions,
-    changed_files: pr.changed_files,
-    created_at: pr.created_at,
-    updated_at: pr.updated_at,
-    merged_at: pr.merged_at,
-    closed_at: pr.closed_at,
-    url: pr.html_url,
   };
 
   return {
@@ -139,6 +138,11 @@ export async function getPullRequest(params: { repo: string; pull_number: number
         text: JSON.stringify(formatted, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'github-pull-request-detail',
+      repo,
+      pullRequest: formatted,
+    },
   };
 }
 

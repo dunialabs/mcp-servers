@@ -14,6 +14,28 @@ import { githubGet, githubPost, buildQueryString } from '../utils/github-api.js'
 import { validateRepositoryFormat, validateUsername } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
+function formatRepositoryItem(repo: any) {
+  return {
+    name: repo.name,
+    full_name: repo.full_name,
+    description: repo.description,
+    owner: repo.owner?.login,
+    private: repo.private,
+    fork: repo.fork,
+    created_at: repo.created_at,
+    updated_at: repo.updated_at,
+    pushed_at: repo.pushed_at,
+    size: repo.size,
+    stargazers_count: repo.stargazers_count,
+    watchers_count: repo.watchers_count,
+    language: repo.language,
+    forks_count: repo.forks_count,
+    open_issues_count: repo.open_issues_count,
+    default_branch: repo.default_branch,
+    url: repo.html_url,
+  };
+}
+
 /**
  * List repositories for a user or organization
  *
@@ -68,24 +90,7 @@ export async function listRepositories(params: {
   const repos = await githubGet(`${endpoint}${query}`);
 
   // Format response
-  const formattedRepos = repos.map((repo: any) => ({
-    name: repo.name,
-    full_name: repo.full_name,
-    description: repo.description,
-    private: repo.private,
-    fork: repo.fork,
-    created_at: repo.created_at,
-    updated_at: repo.updated_at,
-    pushed_at: repo.pushed_at,
-    size: repo.size,
-    stargazers_count: repo.stargazers_count,
-    watchers_count: repo.watchers_count,
-    language: repo.language,
-    forks_count: repo.forks_count,
-    open_issues_count: repo.open_issues_count,
-    default_branch: repo.default_branch,
-    url: repo.html_url,
-  }));
+  const formattedRepos = repos.map((repo: any) => formatRepositoryItem(repo));
 
   return {
     content: [
@@ -94,6 +99,13 @@ export async function listRepositories(params: {
         text: JSON.stringify(formattedRepos, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'github-repository-list',
+      mode: 'list',
+      username: username ?? null,
+      count: formattedRepos.length,
+      repositories: formattedRepos,
+    },
   };
 }
 
@@ -268,15 +280,8 @@ export async function searchRepositories(params: {
     total_count: result.total_count,
     incomplete_results: result.incomplete_results,
     items: result.items.map((repo: any) => ({
-      name: repo.name,
-      full_name: repo.full_name,
-      description: repo.description,
-      owner: repo.owner.login,
-      private: repo.private,
-      stargazers_count: repo.stargazers_count,
-      forks_count: repo.forks_count,
-      language: repo.language,
-      url: repo.html_url,
+      ...formatRepositoryItem(repo),
+      score: repo.score,
     })),
   };
 
@@ -287,6 +292,15 @@ export async function searchRepositories(params: {
         text: JSON.stringify(formatted, null, 2),
       },
     ],
+    structuredContent: {
+      kind: 'github-repository-list',
+      mode: 'search',
+      query,
+      total_count: formatted.total_count,
+      incomplete_results: formatted.incomplete_results,
+      count: formatted.items.length,
+      repositories: formatted.items,
+    },
   };
 }
 

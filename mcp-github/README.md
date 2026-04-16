@@ -67,6 +67,7 @@ Model Context Protocol (MCP) server for GitHub integration. Built for PETA Desk 
 
 - **STDIO Transport**: Direct process communication via stdin/stdout
 - **Dynamic Token Updates**: Supports runtime token refresh without server restart
+- **MCP Apps Views**: Repository, issue, pull request, and PR detail views for compatible clients
 - **GitHub API v3**: Uses the latest stable GitHub REST API (2022-11-28)
 - **Comprehensive Validation**: Input validation, branch name rules, file path security
 - **Enhanced Error Handling**: Clear error messages with GitHub API error mapping
@@ -142,6 +143,31 @@ The server reads the GitHub OAuth access token from the `accessToken` environmen
 - GitHub App token: `ghs_` prefix
 
 **Note**: Token refresh is handled by PETA Core. This server only needs the access token.
+
+## MCP Apps
+
+Compatible MCP Apps clients can render richer views for:
+
+- `githubListRepositories`
+- `githubListIssues`
+- `githubSearchIssues`
+- `githubListPullRequests`
+- `githubGetPullRequest`
+
+These tools keep their original text fallback for non-Apps clients and add `structuredContent` plus App resources for compatible hosts.
+
+## Build Notes
+
+`npm run build` now runs both:
+
+- server TypeScript compilation
+- `npm run build:app` for the GitHub MCP Apps HTML resources
+
+If you change files under `ui/`, rebuild before testing:
+
+```bash
+npm run build
+```
 
 ## Required GitHub OAuth Scopes
 
