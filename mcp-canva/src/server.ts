@@ -5,6 +5,11 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 
 // Design tools
@@ -63,8 +68,23 @@ import {
 } from './tools/user.js';
 
 import { logger } from './utils/logger.js';
-import type { ServerConfig } from './types/index.js';
+import type {
+  Asset,
+  Design,
+  ExportJobResult,
+  FolderItem,
+  GetDesignResponse,
+  GetExportResponse,
+  ListDesignsResponse,
+  ListFolderItemsResponse,
+  ServerConfig,
+} from './types/index.js';
 import { normalizeAccessToken } from './auth/token.js';
+import { readAppHtml } from './utils/app-resource.js';
+
+const CANVA_BROWSER_VIEW_URI = 'ui://canva/browser-view.html';
+const CANVA_METADATA_VIEW_URI = 'ui://canva/metadata-view.html';
+const CANVA_EXPORT_VIEW_URI = 'ui://canva/export-view.html';
 
 /**
  * Tool schemas using Zod
@@ -304,6 +324,94 @@ const GetAutofillStatusParamsSchema = {
   jobId: z.string().describe('Autofill job ID (required)'),
 };
 
+function parseJson<T>(text: string): T {
+  return JSON.parse(text) as T;
+}
+
+function asTextResult(text: string, structuredContent?: Record<string, unknown>) {
+  return {
+    content: [{ type: 'text' as const, text }],
+    ...(structuredContent ? { structuredContent } : {}),
+  };
+}
+
+function summarizeDesign(design: Design) {
+  return {
+    id: design.id,
+    kind: 'design',
+    title: design.title ?? 'Untitled design',
+    subtitle: null,
+    thumbnailUrl: design.thumbnail?.url ?? null,
+    createdAt: design.created_at ?? null,
+    updatedAt: design.updated_at ?? null,
+    viewUrl: design.urls?.view_url ?? null,
+    editUrl: design.urls?.edit_url ?? null,
+  };
+}
+
+function summarizeFolderItem(item: FolderItem) {
+  return {
+    id: item.id,
+    kind: item.type ?? 'item',
+    title: item.title ?? item.name ?? 'Untitled item',
+    subtitle: null,
+    thumbnailUrl: item.thumbnail?.url ?? null,
+    createdAt: item.created_at ?? null,
+    updatedAt: item.updated_at ?? null,
+    viewUrl: null,
+    editUrl: null,
+  };
+}
+
+function summarizeAsset(asset: Asset) {
+  return {
+    kind: 'canva-asset-detail',
+    title: asset.name ?? 'Asset',
+    subtitle: 'Asset metadata preview',
+    thumbnailUrl: asset.thumbnail?.url ?? null,
+    createdAt: asset.created_at ?? null,
+    updatedAt: asset.updated_at ?? null,
+    meta: [
+      { label: 'Asset ID', value: asset.id },
+      { label: 'Dimensions', value: asset.thumbnail ? `${asset.thumbnail.width} × ${asset.thumbnail.height}` : 'Unknown' },
+    ],
+    tags: asset.tags ?? [],
+  };
+}
+
+function summarizeDesignDetail(design: Design) {
+  return {
+    kind: 'canva-design-detail',
+    title: design.title ?? 'Untitled design',
+    subtitle: 'Design metadata preview',
+    thumbnailUrl: design.thumbnail?.url ?? null,
+    viewUrl: design.urls?.view_url ?? null,
+    editUrl: design.urls?.edit_url ?? null,
+    createdAt: design.created_at ?? null,
+    updatedAt: design.updated_at ?? null,
+    meta: [
+      { label: 'Design ID', value: design.id },
+      { label: 'View URL', value: design.urls?.view_url ?? 'Unavailable' },
+      { label: 'Edit URL', value: design.urls?.edit_url ?? 'Unavailable' },
+    ],
+    tags: [],
+  };
+}
+
+function summarizeExport(job: ExportJobResult) {
+  return {
+    kind: 'canva-export-result',
+    status: job.status ?? null,
+    exportId: job.id ?? null,
+    errorCode: job.error?.code ?? null,
+    errorMessage: job.error?.message ?? null,
+    urls: (job.urls ?? []).map((item) => ({
+      url: item.url ?? null,
+      page: item.page ?? null,
+    })),
+  };
+}
+
 /**
  * Canva MCP Server Class
  */
@@ -364,10 +472,44 @@ export class CanvaMCPServer {
 
     logger.info('[Server] Token update notification handler registered');
 
+    this.registerAppResources();
+
     // Register tools
     await this.registerTools();
 
     logger.info('[Server] All tools registered successfully');
+  }
+
+  private registerAppResources() {
+    registerAppResource(this.server, 'canva-browser-view', CANVA_BROWSER_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: CANVA_BROWSER_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('canva-browser-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'canva-metadata-view', CANVA_METADATA_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: CANVA_METADATA_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('canva-metadata-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'canva-export-view', CANVA_EXPORT_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: CANVA_EXPORT_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('canva-export-view.html'),
+        },
+      ],
+    }));
   }
 
   /**
@@ -386,24 +528,51 @@ export class CanvaMCPServer {
       async (params: any) => { const result = await createDesign(params); return { content: [{ type: "text" as const, text: result }] }; }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'canvaListDesigns',
       {
         title: 'Canva - List Designs',
         description: 'List and search for designs in Canva. Supports filtering by ownership, sorting, and pagination.',
+        _meta: {
+          ui: {
+            resourceUri: CANVA_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: ListDesignsParamsSchema,
       },
-      async (params: any) => { const result = await listDesigns(params); return { content: [{ type: "text" as const, text: result }] }; }
+      async (params: any) => {
+        const result = await listDesigns(params);
+        const parsed = parseJson<ListDesignsResponse>(result);
+        return asTextResult(result, {
+          kind: 'canva-design-list',
+          title: 'Designs',
+          subtitle: params.query ? `Showing designs for "${params.query}".` : 'Browse Canva designs.',
+          count: parsed.items?.length ?? 0,
+          continuation: parsed.continuation ?? null,
+          items: (parsed.items ?? []).map((item) => summarizeDesign(item)),
+        });
+      }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'canvaGetDesign',
       {
         title: 'Canva - Get Design',
         description: 'Get metadata and details for a specific design.',
+        _meta: {
+          ui: {
+            resourceUri: CANVA_METADATA_VIEW_URI,
+          },
+        },
         inputSchema: GetDesignParamsSchema,
       },
-      async (params: any) => { const result = await getDesign(params.designId); return { content: [{ type: "text" as const, text: result }] }; }
+      async (params: any) => {
+        const result = await getDesign(params.designId);
+        const parsed = parseJson<GetDesignResponse>(result);
+        return asTextResult(result, summarizeDesignDetail(parsed.design));
+      }
     );
 
     this.server.registerTool(
@@ -458,14 +627,24 @@ export class CanvaMCPServer {
       async (params: any) => { const result = await getUrlAssetUploadStatus(params.jobId); return { content: [{ type: "text" as const, text: result }] }; }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'canvaGetAsset',
       {
         title: 'Canva - Get Asset',
         description: 'Get metadata for a specific asset.',
+        _meta: {
+          ui: {
+            resourceUri: CANVA_METADATA_VIEW_URI,
+          },
+        },
         inputSchema: GetAssetParamsSchema,
       },
-      async (params: any) => { const result = await getAsset(params.assetId); return { content: [{ type: "text" as const, text: result }] }; }
+      async (params: any) => {
+        const result = await getAsset(params.assetId);
+        const parsed = parseJson<{ asset: Asset }>(result);
+        return asTextResult(result, summarizeAsset(parsed.asset));
+      }
     );
 
     this.server.registerTool(
@@ -530,14 +709,31 @@ export class CanvaMCPServer {
       async (params: any) => { const result = await deleteFolder(params.folderId); return { content: [{ type: "text" as const, text: result }] }; }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'canvaListFolderItems',
       {
         title: 'Canva - List Folder Items',
         description: 'List contents of a folder (designs and subfolders).',
+        _meta: {
+          ui: {
+            resourceUri: CANVA_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: ListFolderItemsParamsSchema,
       },
-      async (params: any) => { const result = await listFolderItems(params.folderId, params); return { content: [{ type: "text" as const, text: result }] }; }
+      async (params: any) => {
+        const result = await listFolderItems(params.folderId, params);
+        const parsed = parseJson<ListFolderItemsResponse>(result);
+        return asTextResult(result, {
+          kind: 'canva-folder-item-list',
+          title: 'Folder Items',
+          subtitle: 'Browse designs, folders, and images in this Canva folder.',
+          count: parsed.items?.length ?? 0,
+          continuation: parsed.continuation ?? null,
+          items: (parsed.items ?? []).map((item) => summarizeFolderItem(item)),
+        });
+      }
     );
 
     this.server.registerTool(
@@ -562,14 +758,24 @@ export class CanvaMCPServer {
       async (params: any) => { const result = await createExport(params); return { content: [{ type: "text" as const, text: result }] }; }
     );
 
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'canvaGetExportStatus',
       {
         title: 'Canva - Get Export Status',
         description: 'Check the status of an export job and get download URLs when complete.',
+        _meta: {
+          ui: {
+            resourceUri: CANVA_EXPORT_VIEW_URI,
+          },
+        },
         inputSchema: GetExportStatusParamsSchema,
       },
-      async (params: any) => { const result = await getExportStatus(params.exportId); return { content: [{ type: "text" as const, text: result }] }; }
+      async (params: any) => {
+        const result = await getExportStatus(params.exportId);
+        const parsed = parseJson<GetExportResponse>(result);
+        return asTextResult(result, summarizeExport(parsed.job));
+      }
     );
 
     // ==================== Import Tools ====================

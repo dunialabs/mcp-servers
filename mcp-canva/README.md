@@ -68,13 +68,20 @@ A Model Context Protocol (MCP) server that integrates with Canva Connect API v1,
 - `canvaGetUserProfile` - Get user profile
 - `canvaGetUserCapabilities` - Get user capabilities
 
+### MCP Apps Views
+- `canvaListDesigns` - asset/design gallery view
+- `canvaListFolderItems` - folder item gallery view
+- `canvaGetDesign` - design metadata preview
+- `canvaGetAsset` - asset metadata preview
+- `canvaGetExportStatus` - export result preview
+
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ or Docker
+- Node.js 20+ or Docker
 - Canva OAuth access token (see [Authentication](#-authentication))
 
 ### Installation
@@ -104,6 +111,14 @@ npm run dev
 ```bash
 npm run build
 npm start
+```
+
+`npm run build` includes `npm run build:app`, which generates the MCP Apps HTML resources for supported clients.
+
+If you only need to rebuild the Apps views during UI iteration:
+
+```bash
+npm run build:app
 ```
 
 #### Option 3: Docker
