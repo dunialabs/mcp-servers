@@ -1,5 +1,5 @@
 # ghcr.io/dunialabs/mcp-servers/figma - Docker image for STDIO mode
-FROM node:18-alpine
+FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="ghcr.io/dunialabs/mcp-servers/figma"
 LABEL org.opencontainers.image.description="Figma MCP Server for PETA ecosystem"

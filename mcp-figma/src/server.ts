@@ -4,6 +4,11 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { figmaTestConnection } from './tools/testConnection.js';
 import { figmaListFiles } from './tools/listFiles.js';
@@ -25,6 +30,11 @@ import { figmaGetFigJam } from './tools/getFigJam.js';
 import { logger } from './utils/logger.js';
 import { getServerVersion } from './utils/version.js';
 import { normalizeAccessToken } from './auth/token.js';
+import { readAppHtml } from './utils/app-resource.js';
+
+const FIGMA_BROWSER_VIEW_URI = 'ui://figma/browser-view.html';
+const FIGMA_NODE_VIEW_URI = 'ui://figma/node-view.html';
+const FIGMA_COMPONENT_VIEW_URI = 'ui://figma/component-view.html';
 
 /**
  * Tool schemas using Zod
@@ -132,6 +142,166 @@ const GetProjectParamsSchema = {
   project_id: z.string().describe('Figma project ID (required)'),
 };
 
+type ToolTextResult = {
+  content: Array<{ type: 'text'; text: string }>;
+  [key: string]: unknown;
+};
+
+function extractText(result: ToolTextResult): string {
+  return result.content.find((item) => item.type === 'text')?.text ?? '{}';
+}
+
+function parseToolData(result: ToolTextResult): any {
+  const parsed = JSON.parse(extractText(result));
+  return parsed?.data ?? parsed?.metadata ?? parsed;
+}
+
+function withStructuredContent(
+  result: ToolTextResult,
+  structuredContent: Record<string, unknown>
+) {
+  return {
+    content: result.content,
+    structuredContent,
+  };
+}
+
+function flattenNode(node: any, depth = 0): any {
+  return {
+    id: node?.id ?? null,
+    name: node?.name ?? 'Untitled node',
+    type: node?.type ?? 'NODE',
+    depth,
+    children: Array.isArray(node?.children) ? node.children.map((child: any) => flattenNode(child, depth + 1)) : [],
+  };
+}
+
+function summarizeProject(project: any) {
+  return {
+    id: project?.id ?? null,
+    kind: 'project',
+    title: project?.name ?? 'Untitled project',
+    subtitle: project?.description ?? null,
+    description: project?.description ?? null,
+    updatedAt: project?.updated_at ?? project?.modified_at ?? null,
+    badges: [
+      project?.team_name ? `Team: ${project.team_name}` : null,
+      typeof project?.file_count === 'number' ? `Files: ${project.file_count}` : null,
+    ].filter(Boolean),
+    links: [],
+  };
+}
+
+function summarizeFile(file: any) {
+  return {
+    id: file?.key ?? file?.id ?? null,
+    kind: 'file',
+    title: file?.name ?? 'Untitled file',
+    subtitle: file?.last_modified ?? file?.updated_at ?? null,
+    description: file?.description ?? null,
+    thumbnailUrl: file?.thumbnail_url ?? file?.thumbnailUrl ?? null,
+    updatedAt: file?.last_modified ?? file?.updated_at ?? null,
+    badges: [
+      file?.role ? `Role: ${file.role}` : null,
+      file?.branch_data?.mainFileKey ? 'Branch' : null,
+    ].filter(Boolean),
+    links: file?.key
+      ? [{ label: 'Open in Figma', url: `https://www.figma.com/file/${file.key}` }]
+      : [],
+  };
+}
+
+function summarizeProjectDetail(project: any) {
+  return {
+    kind: 'figma-project-detail',
+    title: project?.name ?? 'Project',
+    subtitle: project?.description ?? 'Project file browser',
+    count: Array.isArray(project?.files) ? project.files.length : 0,
+    items: (project?.files ?? []).map((file: any) => summarizeFile(file)),
+  };
+}
+
+function summarizeFileDetail(data: any) {
+  const documentNode = data?.document ? flattenNode(data.document) : null;
+  return {
+    kind: 'figma-file-detail',
+    title: data?.name ?? 'Figma file',
+    subtitle: 'File structure and metadata panel',
+    badges: [
+      data?.editorType ? `Editor: ${data.editorType}` : null,
+      data?.version ? `Version: ${data.version}` : null,
+      data?.role ? `Role: ${data.role}` : null,
+    ].filter(Boolean),
+    meta: [
+      { label: 'File Key', value: data?.key ?? '—' },
+      { label: 'Last Modified', value: data?.lastModified ?? '—' },
+      { label: 'Link Access', value: data?.linkAccess ?? '—' },
+    ],
+    tree: documentNode ? [documentNode] : [],
+  };
+}
+
+function summarizeNodeDetail(data: any) {
+  const nodes = Object.values(data?.nodes ?? {}) as any[];
+  const tree = nodes
+    .map((entry) => (entry?.document ? flattenNode(entry.document) : null))
+    .filter(Boolean);
+
+  return {
+    kind: 'figma-node-detail',
+    title: nodes[0]?.document?.name ?? 'Selected nodes',
+    subtitle: 'Node tree and metadata panel',
+    badges: [`Nodes: ${nodes.length}`],
+    meta: [
+      { label: 'File Key', value: data?.file_key ?? '—' },
+      { label: 'Selected IDs', value: Object.keys(data?.nodes ?? {}).join(', ') || '—' },
+    ],
+    tree,
+  };
+}
+
+function summarizeMetadataView(data: any) {
+  return {
+    kind: 'figma-file-metadata',
+    title: data?.name ?? 'Figma metadata',
+    subtitle: 'Simplified file metadata',
+    badges: [
+      data?.editorType ? `Editor: ${data.editorType}` : null,
+      data?.version ? `Version: ${data.version}` : null,
+    ].filter(Boolean),
+    meta: [
+      { label: 'Last Modified', value: data?.lastModified ?? '—' },
+      { label: 'Role', value: data?.role ?? '—' },
+      { label: 'Link Access', value: data?.linkAccess ?? '—' },
+      { label: 'Thumbnail', value: data?.thumbnailUrl ?? '—' },
+    ],
+    tree: [],
+  };
+}
+
+function summarizeComponents(data: any, fileKey: string) {
+  const components = Object.values(data?.meta?.components ?? {}) as any[];
+  const componentSets = data?.meta?.component_sets ?? {};
+  return {
+    kind: 'figma-component-summary',
+    title: 'Components',
+    subtitle: 'Component preview summary',
+    badges: [
+      `Components: ${components.length}`,
+      `Sets: ${Object.keys(componentSets).length}`,
+    ],
+    items: components.map((component) => ({
+      id: component?.node_id ?? component?.key ?? null,
+      name: component?.name ?? 'Untitled component',
+      description: component?.description ?? null,
+      key: component?.key ?? null,
+      containingFrame: component?.containing_frame?.name ?? null,
+      setName: component?.component_set_id ? componentSets[component.component_set_id]?.name ?? null : null,
+      fileKey,
+    })),
+  };
+}
+
 /**
  * Figma MCP Server
  */
@@ -210,6 +380,8 @@ export class FigmaMcpServer {
 
     logger.info('[Server] Token update notification handler registered');
 
+    this.registerAppResources();
+
     // Register tools in order
 
     // Tool 0: Test Connection
@@ -226,41 +398,71 @@ export class FigmaMcpServer {
     );
 
     // Tool 1: List Files
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'figmaListFiles',
       {
         title: 'Figma - List Files',
         description: 'List all files in a Figma project. Returns file metadata including name, key, thumbnail, and last modified date.',
+        _meta: {
+          ui: {
+            resourceUri: FIGMA_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: ListFilesParamsSchema,
       },
       async (params: any) => {
-        return await figmaListFiles(params);
+        const result = await figmaListFiles(params);
+        const data = parseToolData(result);
+        return withStructuredContent(result, {
+          kind: 'figma-file-list',
+          title: 'Project Files',
+          subtitle: 'Browse files inside this Figma project.',
+          count: data?.files?.length ?? 0,
+          items: (data?.files ?? []).map((file: any) => summarizeFile(file)),
+        });
       }
     );
 
     // Tool 2: Get File
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'figmaGetFile',
       {
         title: 'Figma - Get File',
         description: 'Get the full document structure of a Figma file. Returns complete node hierarchy with all design elements, frames, layers, and properties.',
+        _meta: {
+          ui: {
+            resourceUri: FIGMA_NODE_VIEW_URI,
+          },
+        },
         inputSchema: GetFileParamsSchema,
       },
       async (params: any) => {
-        return await figmaGetFile(params);
+        const result = await figmaGetFile(params);
+        const data = parseToolData(result);
+        return withStructuredContent(result, summarizeFileDetail({ ...data, key: params.file_key }));
       }
     );
 
     // Tool 3: Get Node
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'figmaGetNode',
       {
         title: 'Figma - Get Node',
         description: 'Get specific nodes from a Figma file by their IDs. Useful for retrieving individual frames, components, or design elements.',
+        _meta: {
+          ui: {
+            resourceUri: FIGMA_NODE_VIEW_URI,
+          },
+        },
         inputSchema: GetNodeParamsSchema,
       },
       async (params: any) => {
-        return await figmaGetNode(params);
+        const result = await figmaGetNode(params);
+        const data = parseToolData(result);
+        return withStructuredContent(result, summarizeNodeDetail({ ...data, file_key: params.file_key }));
       }
     );
 
@@ -278,15 +480,23 @@ export class FigmaMcpServer {
     );
 
     // Tool 5: Get Metadata
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'figmaGetMetadata',
       {
         title: 'Figma - Get Metadata',
         description: 'Get simplified metadata for a Figma file. Supports JSON (default) and lightweight XML format with basic properties (layer IDs, names, types, positions, sizes).',
+        _meta: {
+          ui: {
+            resourceUri: FIGMA_NODE_VIEW_URI,
+          },
+        },
         inputSchema: GetMetadataParamsSchema,
       },
       async (params: any) => {
-        return await figmaGetMetadata(params);
+        const result = await figmaGetMetadata(params);
+        const data = parseToolData(result);
+        return withStructuredContent(result, summarizeMetadataView(data));
       }
     );
 
@@ -382,15 +592,23 @@ export class FigmaMcpServer {
     );
 
     // Tool 13: Get Components
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'figmaGetComponents',
       {
         title: 'Figma - Get Components',
         description: 'Get components and component sets from a Figma file. Returns reusable design components with their properties and variants.',
+        _meta: {
+          ui: {
+            resourceUri: FIGMA_COMPONENT_VIEW_URI,
+          },
+        },
         inputSchema: GetComponentsParamsSchema,
       },
       async (params: any) => {
-        return await figmaGetComponents(params);
+        const result = await figmaGetComponents(params);
+        const data = parseToolData(result);
+        return withStructuredContent(result, summarizeComponents(data, params.file_key));
       }
     );
 
@@ -408,32 +626,86 @@ export class FigmaMcpServer {
     );
 
     // Tool 15: List Projects
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'figmaListProjects',
       {
         title: 'Figma - List Projects',
         description: 'List all projects in a Figma team. Returns project metadata including name, ID, and file count.',
+        _meta: {
+          ui: {
+            resourceUri: FIGMA_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: ListProjectsParamsSchema,
       },
       async (params: any) => {
-        return await figmaListProjects(params);
+        const result = await figmaListProjects(params);
+        const data = parseToolData(result);
+        return withStructuredContent(result, {
+          kind: 'figma-project-list',
+          title: 'Team Projects',
+          subtitle: 'Browse projects available in this Figma team.',
+          count: data?.projects?.length ?? 0,
+          items: (data?.projects ?? []).map((project: any) => summarizeProject(project)),
+        });
       }
     );
 
     // Tool 16: Get Project
-    this.server.registerTool(
+    registerAppTool(
+      this.server,
       'figmaGetProject',
       {
         title: 'Figma - Get Project',
         description: 'Get details of a specific Figma project including name, description, and contained files.',
+        _meta: {
+          ui: {
+            resourceUri: FIGMA_BROWSER_VIEW_URI,
+          },
+        },
         inputSchema: GetProjectParamsSchema,
       },
       async (params: any) => {
-        return await figmaGetProject(params);
+        const result = await figmaGetProject(params);
+        const data = parseToolData(result);
+        return withStructuredContent(result, summarizeProjectDetail(data));
       }
     );
 
     logger.info('[Server] Registered 17 tools');
+  }
+
+  private registerAppResources() {
+    registerAppResource(this.server, 'figma-browser-view', FIGMA_BROWSER_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: FIGMA_BROWSER_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('figma-browser-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'figma-node-view', FIGMA_NODE_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: FIGMA_NODE_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('figma-node-view.html'),
+        },
+      ],
+    }));
+
+    registerAppResource(this.server, 'figma-component-view', FIGMA_COMPONENT_VIEW_URI, {}, async () => ({
+      contents: [
+        {
+          uri: FIGMA_COMPONENT_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('figma-component-view.html'),
+        },
+      ],
+    }));
   }
 
   /**

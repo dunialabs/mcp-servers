@@ -28,6 +28,19 @@ Model Context Protocol (MCP) server for Figma integration. Built for PETA Desk i
 - Read access to file content, metadata, version history, comments, variables, components, and styles
 - STDIO transport (stdin/stdout communication)
 - Dynamic token updates without server restart
+- MCP Apps browser / node tree / component summary views for supported clients
+
+## MCP Apps Views
+
+Supported clients get enriched views for these tools while non-Apps clients still receive the original text fallback:
+
+- `figmaListProjects` - project browser
+- `figmaListFiles` - file browser
+- `figmaGetProject` - project/file browser detail
+- `figmaGetFile` - node tree and metadata panel
+- `figmaGetNode` - node tree and metadata panel
+- `figmaGetMetadata` - metadata panel
+- `figmaGetComponents` - component preview summary
 
 ## Quick Start
 
@@ -56,6 +69,14 @@ npm run build
 # Run
 export accessToken='figd_xxx...'
 node dist/stdio.js
+```
+
+`npm run build` now includes `npm run build:app`, which generates the MCP Apps HTML resources for supported clients.
+
+If you only need to rebuild the Apps views during UI iteration:
+
+```bash
+npm run build:app
 ```
 
 ### For PETA Core Integration
@@ -114,6 +135,8 @@ The server reads the Figma OAuth access token from the `accessToken` environment
 - `library_analytics:read` - Read design system analytics (Enterprise only, if needed)
 
 ## Environment Variables
+
+**Runtime requirement**: Node.js 20+
 
 ### Required
 - `accessToken` - Figma OAuth access token (provided by peta-core)

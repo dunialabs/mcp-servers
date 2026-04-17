@@ -18,10 +18,19 @@ export async function figmaGetProject(params: FigmaGetProjectParams) {
   logger.debug('[FigmaGetProject] params', params);
 
   try {
-    const url = `${FIGMA_API_BASE}/projects/${params.project_id}`;
-    const data: any = await figmaFetch(url);
+    const url = `${FIGMA_API_BASE}/projects/${params.project_id}/files`;
+    const filesResponse: any = await figmaFetch(url);
+    const data = {
+      id: params.project_id,
+      name: filesResponse.name ?? `Project ${params.project_id}`,
+      description: null,
+      files: filesResponse.files ?? [],
+    };
 
-    logger.info('[FigmaGetProject] success', { projectName: data.name });
+    logger.info('[FigmaGetProject] success', {
+      projectId: params.project_id,
+      fileCount: data.files.length,
+    });
 
     return {
       content: [{
