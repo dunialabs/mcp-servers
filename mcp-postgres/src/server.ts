@@ -7,16 +7,114 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod/v3';
 import { handleUnknownError } from './utils/errors.js';
 import { logger } from './utils/logger.js';
 import { getServerVersion } from './utils/version.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 // Import all tool functions
 import { listSchemas, listTables, describeTable, getTableStats } from './tools/schema.js';
 import { executeQuery, executeWrite, explainQuery } from './tools/query.js';
 
 const VERSION = getServerVersion();
+const POSTGRES_TABLES_VIEW_URI = 'ui://postgres/tables-view.html';
+const POSTGRES_TABLE_DETAIL_VIEW_URI = 'ui://postgres/table-detail-view.html';
+const POSTGRES_QUERY_VIEW_URI = 'ui://postgres/query-view.html';
+
+type ToolTextResult = {
+  content: Array<{ type: 'text'; text: string }>;
+  [key: string]: unknown;
+};
+
+function toStr(value: unknown): string | null {
+  return value != null ? String(value) : null;
+}
+
+function toNum(value: unknown): number | null {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'bigint') return Number(value);
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function withStructuredContent(
+  result: ToolTextResult,
+  structuredContent: Record<string, unknown>
+): ToolTextResult {
+  return { ...result, structuredContent };
+}
+
+function buildTablesStructured(result: ToolTextResult) {
+  const tables = Array.isArray(result.tables) ? result.tables as Record<string, unknown>[] : [];
+  return {
+    kind: 'postgres-table-list',
+    schema: toStr(result.schema),
+    count: tables.length,
+    items: tables.map((table) => ({
+      schemaName: toStr(table.schemaName),
+      tableName: toStr(table.tableName),
+      sizeBytes: toNum(table.sizeBytes),
+    })),
+  };
+}
+
+function buildDescribeStructured(result: ToolTextResult) {
+  const columns = Array.isArray(result.columns) ? result.columns as Record<string, unknown>[] : [];
+  const indexes = Array.isArray(result.indexes) ? result.indexes as Record<string, unknown>[] : [];
+  const constraints = Array.isArray(result.constraints)
+    ? result.constraints as Record<string, unknown>[]
+    : [];
+
+  return {
+    kind: 'postgres-table-detail',
+    schema: toStr(result.schema),
+    table: toStr(result.table),
+    columnCount: columns.length,
+    indexCount: indexes.length,
+    constraintCount: constraints.length,
+    columns: columns.map((column) => ({
+      columnName: toStr(column.columnName),
+      dataType: toStr(column.dataType),
+      isNullable: Boolean(column.isNullable),
+      defaultValue: column.defaultValue == null ? null : toStr(column.defaultValue),
+      characterMaximumLength: toNum(column.characterMaximumLength),
+    })),
+    indexes: indexes.map((index) => ({
+      indexName: toStr(index.indexName),
+      indexDef: toStr(index.index_def),
+      isUnique: Boolean(index.isUnique),
+      isPrimaryKey: Boolean(index.isPrimaryKey),
+    })),
+    constraints: constraints.map((constraint) => ({
+      constraintName: toStr(constraint.constraint_name),
+      constraintType: toStr(constraint.constraint_type),
+    })),
+  };
+}
+
+function buildQueryStructured(result: ToolTextResult) {
+  const columns = Array.isArray(result.columns) ? result.columns as string[] : [];
+  const rows = Array.isArray(result.rows) ? result.rows as Record<string, unknown>[] : [];
+  return {
+    kind: 'postgres-query-result',
+    query: toStr(result.query),
+    rowCount: toNum(result.rowCount) ?? rows.length,
+    limited: Boolean(result.limited),
+    maxRows: toNum(result.maxRows),
+    timeout: toNum(result.timeout),
+    columns,
+    rows,
+  };
+}
 
 /**
  * SERVER_INSTRUCTIONS
@@ -121,6 +219,44 @@ const ExplainQuerySchema = z.object({
   verbose: z.boolean().optional().describe('Include verbose output with additional details'),
 }).catchall(z.unknown());
 
+function registerAppResources(server: McpServer): void {
+  registerAppResource(server, 'postgres-tables-view', POSTGRES_TABLES_VIEW_URI, {}, async () => ({
+    contents: [
+      {
+        uri: POSTGRES_TABLES_VIEW_URI,
+        mimeType: RESOURCE_MIME_TYPE,
+        text: await readAppHtml('postgres-tables-view.html'),
+      },
+    ],
+  }));
+
+  registerAppResource(
+    server,
+    'postgres-table-detail-view',
+    POSTGRES_TABLE_DETAIL_VIEW_URI,
+    {},
+    async () => ({
+      contents: [
+        {
+          uri: POSTGRES_TABLE_DETAIL_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('postgres-table-detail-view.html'),
+        },
+      ],
+    })
+  );
+
+  registerAppResource(server, 'postgres-query-view', POSTGRES_QUERY_VIEW_URI, {}, async () => ({
+    contents: [
+      {
+        uri: POSTGRES_QUERY_VIEW_URI,
+        mimeType: RESOURCE_MIME_TYPE,
+        text: await readAppHtml('postgres-query-view.html'),
+      },
+    ],
+  }));
+}
+
 /**
  * Create and configure the MCP server with all PostgreSQL tools
  */
@@ -131,6 +267,7 @@ export function createServer(): McpServer {
   });
 
   logger.info('[Server] Registering PostgreSQL tools...');
+  registerAppResources(server);
 
   // ========================================
   // SCHEMA EXPLORATION TOOLS
@@ -164,19 +301,22 @@ export function createServer(): McpServer {
    *
    * Lists all tables in a specific schema with size information.
    */
-  server.registerTool(
+  registerAppTool(
+    server,
     'postgresListTables',
     {
       title: 'Postgres - List Tables in Schema',
       description:
         'List all tables in a specified schema with size information in MB. Defaults to "public" schema if not specified. Only lists BASE TABLEs, excluding views and system tables.',
-      inputSchema: ListTablesSchema,
+      _meta: { ui: { resourceUri: POSTGRES_TABLES_VIEW_URI } },
+      inputSchema: ListTablesSchema.shape,
     },
-    async (params) => {
+    async (params: unknown) => {
       try {
         logger.debug('[Tool] listTables called', params);
         const validated = ListTablesSchema.parse(params);
-        return await listTables(validated);
+        const result = (await listTables(validated)) as ToolTextResult;
+        return withStructuredContent(result, buildTablesStructured(result));
       } catch (error) {
         throw handleUnknownError(error, 'listTables tool');
       }
@@ -188,22 +328,25 @@ export function createServer(): McpServer {
    *
    * Get detailed information about a table's structure including columns, indexes, and constraints.
    */
-  server.registerTool(
+  registerAppTool(
+    server,
     'postgresDescribeTable',
     {
       title: 'Postgres - Describe Table Structure',
       description:
         'Get detailed information about a table structure including columns (with data types, nullability, defaults), indexes, and constraints (PRIMARY KEY, FOREIGN KEY, CHECK, UNIQUE). Defaults to "public" schema if not specified.',
-      inputSchema: DescribeTableSchema,
+      _meta: { ui: { resourceUri: POSTGRES_TABLE_DETAIL_VIEW_URI } },
+      inputSchema: DescribeTableSchema.shape,
     },
-    async (params) => {
+    async (params: unknown) => {
       try {
         logger.debug('[Tool] describeTable called', params);
         const validated = DescribeTableSchema.parse(params) as {
           table: string;
           schema?: string;
         };
-        return await describeTable(validated);
+        const result = (await describeTable(validated)) as ToolTextResult;
+        return withStructuredContent(result, buildDescribeStructured(result));
       } catch (error) {
         throw handleUnknownError(error, 'describeTable tool');
       }
@@ -246,26 +389,29 @@ export function createServer(): McpServer {
    *
    * Execute a SELECT query and return results.
    */
-  server.registerTool(
+  registerAppTool(
+    server,
     'postgresExecuteQuery',
     {
       title: 'Postgres - Execute SELECT Query',
       description:
         'Execute read-only SELECT queries and return results formatted as markdown tables. Only SELECT and WITH (CTE) queries are allowed. Supports parameterized queries ($1, $2, etc.) to prevent SQL injection. Automatic row limit applied (default: 1000, max: 10000) and query timeout protection (default: 30s, max: 5min).',
-      inputSchema: ExecuteQuerySchema,
+      _meta: { ui: { resourceUri: POSTGRES_QUERY_VIEW_URI } },
+      inputSchema: ExecuteQuerySchema.shape,
     },
-    async (params) => {
+    async (params: unknown) => {
       try {
-        logger.debug('[Tool] executeQuery called', {
-          queryLength: params.query?.length,
-        });
         const validated = ExecuteQuerySchema.parse(params) as {
           query: string;
           parameters?: unknown[];
           maxRows?: number;
           timeout?: number;
         };
-        return await executeQuery(validated);
+        logger.debug('[Tool] executeQuery called', {
+          queryLength: validated.query?.length,
+        });
+        const result = (await executeQuery(validated)) as ToolTextResult;
+        return withStructuredContent(result, buildQueryStructured(result));
       } catch (error) {
         throw handleUnknownError(error, 'executeQuery tool');
       }

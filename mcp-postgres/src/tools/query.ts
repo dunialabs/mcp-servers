@@ -10,6 +10,11 @@ import {
   createInvalidParamsError,
 } from '../utils/errors.js';
 
+type ToolResult = {
+  content: { type: 'text'; text: string }[];
+  [key: string]: unknown;
+};
+
 /**
  * Execute a SELECT query (readonly)
  */
@@ -18,7 +23,7 @@ export async function executeQuery(params: {
   parameters?: unknown[];
   maxRows?: number;
   timeout?: number;
-}): Promise<{ content: { type: 'text'; text: string }[] }> {
+}): Promise<ToolResult> {
   try {
     const { query, parameters = [], maxRows = 1000, timeout = 30000 } = params;
 
@@ -93,6 +98,13 @@ export async function executeQuery(params: {
           text: output,
         },
       ],
+      query,
+      columns,
+      rows: result.rows,
+      rowCount: result.rows.length,
+      limited: result.rows.length === safeMaxRows,
+      maxRows: safeMaxRows,
+      timeout,
     };
   } catch (error) {
     throw handleUnknownError(error, 'executeQuery');

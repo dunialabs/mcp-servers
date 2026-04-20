@@ -7,6 +7,11 @@ import { logger } from '../utils/logger.js';
 import { handleUnknownError } from '../utils/errors.js';
 import type { TableInfo, ColumnInfo, IndexInfo } from '../types/index.js';
 
+type ToolResult = {
+  content: { type: 'text'; text: string }[];
+  [key: string]: unknown;
+};
+
 /**
  * List all schemas in the database
  */
@@ -63,7 +68,7 @@ export async function listSchemas(): Promise<{ content: { type: 'text'; text: st
  */
 export async function listTables(params: {
   schema?: string;
-}): Promise<{ content: { type: 'text'; text: string }[] }> {
+}): Promise<ToolResult> {
   try {
     const { schema = 'public' } = params;
     logger.debug(`[listTables] Fetching tables from schema: ${schema}`);
@@ -113,6 +118,8 @@ export async function listTables(params: {
           text: output,
         },
       ],
+      schema,
+      tables: result.rows,
     };
   } catch (error) {
     throw handleUnknownError(error, 'listTables');
@@ -125,7 +132,7 @@ export async function listTables(params: {
 export async function describeTable(params: {
   table: string;
   schema?: string;
-}): Promise<{ content: { type: 'text'; text: string }[] }> {
+}): Promise<ToolResult> {
   try {
     const { table, schema = 'public' } = params;
     logger.debug(`[describeTable] Describing table: ${schema}.${table}`);
@@ -222,6 +229,11 @@ export async function describeTable(params: {
           text: output,
         },
       ],
+      schema,
+      table,
+      columns: columnsResult.rows,
+      indexes: indexesResult.rows,
+      constraints: constraintsResult.rows,
     };
   } catch (error) {
     throw handleUnknownError(error, 'describeTable');

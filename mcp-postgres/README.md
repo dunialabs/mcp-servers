@@ -30,6 +30,10 @@ PostgreSQL MCP Server for database management.
   - [x] dumb-init signal forwarding
   - [x] stdin close detection
   - [x] Non-root user execution
+- [x] MCP Apps Views
+  - [x] `postgresListTables`
+  - [x] `postgresDescribeTable`
+  - [x] `postgresExecuteQuery`
 
 ### 🔄 Future Enhancements
 
@@ -106,6 +110,7 @@ npm install
 # Build (choose one based on your needs)
 npm run build           # Full TypeScript build with type checking (slower, ~2-3 minutes)
 npm run build:esbuild   # Fast build with esbuild (recommended for development, ~0.75s)
+npm run build:app       # Build MCP Apps views only
 
 # Run
 npm start
@@ -139,6 +144,15 @@ The PostgreSQL driver (`pg`) uses complex generic types for query results. TypeS
 **Best Practice**:
 - Use `npm run build:esbuild` during development for fast feedback
 - Use `npm run build` before committing or in your CI/CD pipeline to ensure type safety
+
+### MCP Apps Views
+
+Supported MCP Apps views:
+- `postgresListTables`
+- `postgresDescribeTable`
+- `postgresExecuteQuery`
+
+These tools preserve the original text fallback and add structured UI rendering for compatible hosts.
 
 ## 🐳 Docker Deployment
 
