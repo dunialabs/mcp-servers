@@ -67,8 +67,10 @@ function render() {
         white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
-      .table-wrap { overflow: auto; }
-      td, th { white-space: nowrap; }
+      .content { min-width: 0; }
+      .table-wrap { overflow-x: auto; }
+      th { white-space: nowrap; }
+      td { max-width: 240px; white-space: normal; overflow-wrap: break-word; }
     </style>
     <div class="shell">
       <section class="panel hero">
