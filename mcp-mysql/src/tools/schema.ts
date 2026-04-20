@@ -6,9 +6,19 @@ import mysql from 'mysql2/promise';
 import { getDatabase } from '../db/connection.js';
 import { logger } from '../utils/logger.js';
 import { handleUnknownError } from '../utils/errors.js';
-import type { DatabaseInfo, TableInfo, ColumnInfo, IndexInfo, ForeignKeyInfo, TableStats } from '../types/index.js';
+import type {
+  DatabaseInfo,
+  TableInfo,
+  ColumnInfo,
+  IndexInfo,
+  ForeignKeyInfo,
+  TableStats,
+} from '../types/index.js';
 
-type ToolResult = { content: { type: 'text'; text: string }[] };
+type ToolResult = {
+  content: { type: 'text'; text: string }[];
+  [key: string]: unknown;
+};
 
 /**
  * List all user databases with table count and total size
@@ -60,7 +70,7 @@ export async function listTables(params: { database: string }): Promise<ToolResu
     const [rows] = await db.execute<mysql.RowDataPacket[]>(
       `SELECT
         table_name AS tableName,
-        engine,
+        engine AS engine,
         table_rows AS tableRows,
         ROUND((data_length + index_length) / 1024 / 1024, 2) AS sizeMb,
         table_comment AS tableComment
@@ -89,7 +99,11 @@ export async function listTables(params: { database: string }): Promise<ToolResu
 
     output += `\nTotal: ${rows.length} tables`;
 
-    return { content: [{ type: 'text', text: output }] };
+    return {
+      content: [{ type: 'text', text: output }],
+      database,
+      tables: rows as TableInfo[],
+    };
   } catch (error) {
     throw handleUnknownError(error, 'listTables');
   }
@@ -197,7 +211,14 @@ export async function describeTable(params: {
       });
     }
 
-    return { content: [{ type: 'text', text: output }] };
+    return {
+      content: [{ type: 'text', text: output }],
+      database,
+      table,
+      columns: columns as ColumnInfo[],
+      indexes: indexes as IndexInfo[],
+      foreignKeys: foreignKeys as ForeignKeyInfo[],
+    };
   } catch (error) {
     throw handleUnknownError(error, 'describeTable');
   }

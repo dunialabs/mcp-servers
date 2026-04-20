@@ -17,6 +17,7 @@ A Model Context Protocol (MCP) server that integrates with MySQL, enabling Claud
 - **Docker Support**: Multi-platform images (amd64/arm64) with automatic localhost remapping
 - **Complete TypeScript**: Strict typing with Zod validation
 - **Production Ready**: Error handling, logging, graceful shutdown, stdin monitoring
+- **MCP Apps Views**: Table browser, schema detail, and query result grid for supported hosts
 
 ---
 
@@ -72,6 +73,15 @@ docker run -i --rm \
   mcp-mysql:latest
 ```
 
+### MCP Apps Views
+
+Supported MCP Apps views:
+- `mysqlListTables`
+- `mysqlDescribeTable`
+- `mysqlExecuteQuery`
+
+These tools preserve the existing text fallback and add structured UI rendering for compatible clients.
+
 ---
 
 ## Configuration
@@ -124,6 +134,14 @@ MYSQL_QUERY_TIMEOUT=30000      # Default query timeout in ms
   }
 }
 ```
+
+### Docker Deployment (Recommended)
+
+The Docker image automatically handles localhost remapping across all platforms:
+- **MacOS/Windows**: Automatically uses `host.docker.internal`
+- **Linux**: Automatically uses `172.17.0.1` or the appropriate host address
+
+This means you can use `localhost` in your `MYSQL_URL` regardless of platform — the entrypoint script detects the Docker environment and rewrites the host automatically.
 
 ---
 
@@ -202,7 +220,8 @@ MYSQL_QUERY_TIMEOUT=30000      # Default query timeout in ms
 | Script | Description |
 |---|---|
 | `npm run dev` | Development mode with hot reload |
-| `npm run build` | Build TypeScript |
+| `npm run build` | Build TypeScript and MCP Apps views |
+| `npm run build:app` | Build only MCP Apps views |
 | `npm start` | Run built code |
 | `npm run clean` | Clean build directory |
 | `npm test` | Run tests |
@@ -230,6 +249,9 @@ mcp-mysql/
 │   │   ├── errors.ts            # MySQL error code mapping
 │   │   └── logger.ts            # Logging (stderr only)
 │   └── index.ts                 # Entry point, lifecycle management
+├── scripts/
+│   └── build-apps.mjs           # MCP Apps bundling
+├── ui/                          # MCP Apps views
 ├── Dockerfile
 ├── docker-entrypoint.sh
 ├── build-docker.sh

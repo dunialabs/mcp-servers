@@ -7,10 +7,16 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  registerAppResource,
+  registerAppTool,
+  RESOURCE_MIME_TYPE,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod/v3';
 import { handleUnknownError } from './utils/errors.js';
 import { logger } from './utils/logger.js';
 import { getServerVersion } from './utils/version.js';
+import { readAppHtml } from './utils/app-resource.js';
 
 import { listDatabases, listTables, describeTable, getTableStats } from './tools/schema.js';
 import {
@@ -22,6 +28,107 @@ import {
 } from './tools/query.js';
 
 const VERSION = getServerVersion();
+const MYSQL_TABLES_VIEW_URI = 'ui://mysql/tables-view.html';
+const MYSQL_TABLE_DETAIL_VIEW_URI = 'ui://mysql/table-detail-view.html';
+const MYSQL_QUERY_VIEW_URI = 'ui://mysql/query-view.html';
+
+type ToolTextResult = {
+  content: Array<{ type: 'text'; text: string }>;
+  [key: string]: unknown;
+};
+
+function toStr(value: unknown): string | null {
+  return value != null ? String(value) : null;
+}
+
+function toNum(value: unknown): number | null {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'bigint') return Number(value);
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function withStructuredContent(
+  result: ToolTextResult,
+  structuredContent: Record<string, unknown>
+): ToolTextResult {
+  return { ...result, structuredContent };
+}
+
+function buildTablesStructured(result: ToolTextResult) {
+  const tables = Array.isArray(result.tables) ? result.tables as Record<string, unknown>[] : [];
+  return {
+    kind: 'mysql-table-list',
+    database: toStr(result.database),
+    count: tables.length,
+    items: tables.map((table) => ({
+      tableName: toStr(table.tableName),
+      engine: toStr(table.engine),
+      tableRows: toNum(table.tableRows),
+      sizeMb: toNum(table.sizeMb),
+      tableComment: toStr(table.tableComment),
+    })),
+  };
+}
+
+function buildDescribeStructured(result: ToolTextResult) {
+  const columns = Array.isArray(result.columns) ? result.columns as Record<string, unknown>[] : [];
+  const indexes = Array.isArray(result.indexes) ? result.indexes as Record<string, unknown>[] : [];
+  const foreignKeys = Array.isArray(result.foreignKeys)
+    ? result.foreignKeys as Record<string, unknown>[]
+    : [];
+
+  return {
+    kind: 'mysql-table-detail',
+    database: toStr(result.database),
+    table: toStr(result.table),
+    columnCount: columns.length,
+    indexCount: indexes.length,
+    foreignKeyCount: foreignKeys.length,
+    columns: columns.map((column) => ({
+      columnName: toStr(column.columnName),
+      dataType: toStr(column.dataType),
+      columnType: toStr(column.columnType),
+      isNullable: toStr(column.isNullable),
+      defaultValue: column.defaultValue == null ? null : toStr(column.defaultValue),
+      extra: toStr(column.extra),
+      columnComment: toStr(column.columnComment),
+      characterMaximumLength: toNum(column.characterMaximumLength),
+    })),
+    indexes: indexes.map((index) => ({
+      indexName: toStr(index.indexName),
+      columns: toStr(index.columns),
+      isUnique: toNum(index.isUnique),
+      indexType: toStr(index.indexType),
+    })),
+    foreignKeys: foreignKeys.map((key) => ({
+      constraintName: toStr(key.constraintName),
+      columnName: toStr(key.columnName),
+      referencedTable: toStr(key.referencedTable),
+      referencedColumn: toStr(key.referencedColumn),
+      onUpdate: toStr(key.onUpdate),
+      onDelete: toStr(key.onDelete),
+    })),
+  };
+}
+
+function buildQueryStructured(result: ToolTextResult) {
+  const columns = Array.isArray(result.columns) ? result.columns as string[] : [];
+  const rows = Array.isArray(result.rows) ? result.rows as Record<string, unknown>[] : [];
+  return {
+    kind: 'mysql-query-result',
+    query: toStr(result.query),
+    rowCount: toNum(result.rowCount) ?? rows.length,
+    limited: Boolean(result.limited),
+    maxRows: toNum(result.maxRows),
+    timeout: toNum(result.timeout),
+    columns,
+    rows,
+  };
+}
 
 // ==================== Zod Schemas ====================
 
@@ -34,21 +141,23 @@ const QueryParameterSchema = z.union([
   z.array(z.unknown()),
 ]);
 
-const ListTablesSchema = z.object({
+const ListTablesParamsSchema = {
   database: z.string().min(1).describe('Database name to list tables from'),
-});
+};
+const ListTablesSchema = z.object(ListTablesParamsSchema);
 
-const DescribeTableSchema = z.object({
+const DescribeTableParamsSchema = {
   database: z.string().min(1).describe('Database name'),
   table: z.string().min(1).describe('Table name to describe'),
-});
+};
+const DescribeTableSchema = z.object(DescribeTableParamsSchema);
 
 const GetTableStatsSchema = z.object({
   database: z.string().min(1).describe('Database name'),
   table: z.string().min(1).describe('Table name to get statistics for'),
 });
 
-const ExecuteQuerySchema = z.object({
+const ExecuteQueryParamsSchema = {
   query: z.string().min(1).describe('SQL SELECT query to execute'),
   parameters: z
     .array(QueryParameterSchema)
@@ -68,7 +177,8 @@ const ExecuteQuerySchema = z.object({
     .max(300000)
     .optional()
     .describe('Query timeout in milliseconds (default: 30000, max: 300000)'),
-});
+};
+const ExecuteQuerySchema = z.object(ExecuteQueryParamsSchema);
 
 const ExecuteWriteSchema = z.object({
   query: z
@@ -109,6 +219,44 @@ const ShowCreateTableSchema = z.object({
   table: z.string().min(1).describe('Table name to show CREATE TABLE DDL for'),
 });
 
+function registerAppResources(server: McpServer): void {
+  registerAppResource(server, 'mysql-tables-view', MYSQL_TABLES_VIEW_URI, {}, async () => ({
+    contents: [
+      {
+        uri: MYSQL_TABLES_VIEW_URI,
+        mimeType: RESOURCE_MIME_TYPE,
+        text: await readAppHtml('mysql-tables-view.html'),
+      },
+    ],
+  }));
+
+  registerAppResource(
+    server,
+    'mysql-table-detail-view',
+    MYSQL_TABLE_DETAIL_VIEW_URI,
+    {},
+    async () => ({
+      contents: [
+        {
+          uri: MYSQL_TABLE_DETAIL_VIEW_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: await readAppHtml('mysql-table-detail-view.html'),
+        },
+      ],
+    })
+  );
+
+  registerAppResource(server, 'mysql-query-view', MYSQL_QUERY_VIEW_URI, {}, async () => ({
+    contents: [
+      {
+        uri: MYSQL_QUERY_VIEW_URI,
+        mimeType: RESOURCE_MIME_TYPE,
+        text: await readAppHtml('mysql-query-view.html'),
+      },
+    ],
+  }));
+}
+
 // ==================== Server ====================
 
 export function createServer(): McpServer {
@@ -118,6 +266,7 @@ export function createServer(): McpServer {
   });
 
   logger.info('[Server] Registering MySQL tools...');
+  registerAppResources(server);
 
   // ========================================
   // SCHEMA EXPLORATION TOOLS
@@ -141,38 +290,44 @@ export function createServer(): McpServer {
     }
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'mysqlListTables',
     {
       title: 'MySQL - List Tables in Database',
       description:
         'List all tables in a specified database with storage engine, estimated row count, size in MB, and table comments. Only lists BASE TABLEs (excludes views).',
-      inputSchema: ListTablesSchema,
+      _meta: { ui: { resourceUri: MYSQL_TABLES_VIEW_URI } },
+      inputSchema: ListTablesParamsSchema,
     },
-    async (params) => {
+    async (params: unknown) => {
       try {
         logger.debug('[Tool] mysqlListTables called', params);
         const validated = ListTablesSchema.parse(params);
-        return await listTables(validated);
+        const result = (await listTables(validated)) as ToolTextResult;
+        return withStructuredContent(result, buildTablesStructured(result));
       } catch (error) {
         throw handleUnknownError(error, 'mysqlListTables tool');
       }
     }
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'mysqlDescribeTable',
     {
       title: 'MySQL - Describe Table Structure',
       description:
         'Get detailed information about a table structure including columns (with data types, nullability, defaults, AUTO_INCREMENT, comments), indexes (PRIMARY KEY, UNIQUE, INDEX), and foreign keys (with ON UPDATE/DELETE rules).',
-      inputSchema: DescribeTableSchema,
+      _meta: { ui: { resourceUri: MYSQL_TABLE_DETAIL_VIEW_URI } },
+      inputSchema: DescribeTableParamsSchema,
     },
-    async (params) => {
+    async (params: unknown) => {
       try {
         logger.debug('[Tool] mysqlDescribeTable called', params);
         const validated = DescribeTableSchema.parse(params);
-        return await describeTable(validated);
+        const result = (await describeTable(validated)) as ToolTextResult;
+        return withStructuredContent(result, buildDescribeStructured(result));
       } catch (error) {
         throw handleUnknownError(error, 'mysqlDescribeTable tool');
       }
@@ -187,7 +342,7 @@ export function createServer(): McpServer {
         'Get statistical information about a table including estimated row count, data size, index size, total size, AUTO_INCREMENT value, storage engine, collation, and timestamps. Row count is an estimate — use COUNT(*) query for exact count.',
       inputSchema: GetTableStatsSchema,
     },
-    async (params) => {
+    async (params: unknown) => {
       try {
         logger.debug('[Tool] mysqlGetTableStats called', params);
         const validated = GetTableStatsSchema.parse(params);
@@ -202,19 +357,22 @@ export function createServer(): McpServer {
   // QUERY EXECUTION TOOLS
   // ========================================
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'mysqlExecuteQuery',
     {
       title: 'MySQL - Execute SELECT Query',
       description:
         'Execute read-only SELECT queries and return results formatted as a markdown table. Only SELECT and WITH (CTE) queries are allowed. Supports parameterized queries (use ? placeholders) to prevent SQL injection. Automatic row limit applied (default: 1000, max: 10000). Query timeout enforced via MAX_EXECUTION_TIME hint (default: 30s, max: 5min).',
-      inputSchema: ExecuteQuerySchema,
+      _meta: { ui: { resourceUri: MYSQL_QUERY_VIEW_URI } },
+      inputSchema: ExecuteQueryParamsSchema,
     },
     async (params) => {
       try {
         logger.debug('[Tool] mysqlExecuteQuery called', { queryLength: params.query?.length });
         const validated = ExecuteQuerySchema.parse(params);
-        return await executeQuery(validated);
+        const result = (await executeQuery(validated)) as ToolTextResult;
+        return withStructuredContent(result, buildQueryStructured(result));
       } catch (error) {
         throw handleUnknownError(error, 'mysqlExecuteQuery tool');
       }

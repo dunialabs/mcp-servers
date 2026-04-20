@@ -8,7 +8,10 @@ import { logger } from '../utils/logger.js';
 import { handleUnknownError, createInvalidParamsError } from '../utils/errors.js';
 import type { ProcessInfo } from '../types/index.js';
 
-type ToolResult = { content: { type: 'text'; text: string }[] };
+type ToolResult = {
+  content: { type: 'text'; text: string }[];
+  [key: string]: unknown;
+};
 
 /**
  * Execute a SELECT query (read-only)
@@ -89,7 +92,26 @@ export async function executeQuery(params: {
       output += `\nResult set limited to ${safeMaxRows} rows. Use a smaller maxRows if needed.`;
     }
 
-    return { content: [{ type: 'text', text: output }] };
+    return {
+      content: [{ type: 'text', text: output }],
+      query,
+      columns,
+      rows: rows.map((row) => {
+        const record = row as Record<string, unknown>;
+        return Object.fromEntries(
+          columns.map((col) => {
+            const val = record[col];
+            if (val instanceof Date) return [col, val.toISOString()];
+            if (typeof val === 'bigint') return [col, val.toString()];
+            return [col, val];
+          })
+        );
+      }),
+      rowCount: rows.length,
+      limited: rows.length === safeMaxRows,
+      maxRows: safeMaxRows,
+      timeout: safeTimeout,
+    };
   } catch (error) {
     throw handleUnknownError(error, 'executeQuery');
   }
