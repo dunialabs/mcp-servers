@@ -331,6 +331,7 @@ function bindRefresh() {
     }
     try {
       const result = await app.callServerTool({ name: 'gdriveGetFileMetadata', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as MetadataPayload);
     } finally {
       isRefreshing = false;

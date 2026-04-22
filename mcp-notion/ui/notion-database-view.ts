@@ -204,6 +204,7 @@ function bindRefresh() {
     render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'notionQueryDatabase', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as DatabasePayload);
     } finally {
       isRefreshing = false;

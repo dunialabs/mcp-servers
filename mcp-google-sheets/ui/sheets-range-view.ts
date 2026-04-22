@@ -277,6 +277,7 @@ function bindRefresh() {
     render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'gsheetsReadValues', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as RangePayload);
     } finally {
       isRefreshing = false;

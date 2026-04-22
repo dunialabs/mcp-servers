@@ -355,6 +355,7 @@ function bindRefresh() {
     }
     try {
       const result = await app.callServerTool({ name: 'gcalendarGetFreeBusy', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as StructuredPayload);
     } finally {
       isRefreshing = false;

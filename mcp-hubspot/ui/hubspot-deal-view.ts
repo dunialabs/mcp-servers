@@ -233,6 +233,7 @@ function bindRefresh() {
     render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'hubspotGetDeal', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as DealPayload);
     } finally {
       isRefreshing = false;

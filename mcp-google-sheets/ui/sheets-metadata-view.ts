@@ -278,6 +278,7 @@ function bindRefresh() {
     render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'gsheetsGetSpreadsheet', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as MetadataPayload);
     } finally {
       isRefreshing = false;

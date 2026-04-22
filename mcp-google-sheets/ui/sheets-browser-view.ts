@@ -283,6 +283,7 @@ function bindRefresh() {
     render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'gsheetsListSpreadsheets', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as BrowserPayload);
     } finally {
       isRefreshing = false;

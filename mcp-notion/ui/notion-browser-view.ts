@@ -229,6 +229,7 @@ function bindRefresh() {
     render(currentPayload);
     try {
       const result = await app.callServerTool({ name: 'notionSearch', arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as BrowserPayload);
     } finally {
       isRefreshing = false;
