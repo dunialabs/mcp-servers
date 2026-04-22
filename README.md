@@ -576,7 +576,7 @@ All MCP servers are available as Docker images on GitHub Container Registry (GHC
 | Google Docs | `ghcr.io/dunialabs/mcp-servers/google-docs` | v1.0.2 |
 | Google Drive | `ghcr.io/dunialabs/mcp-servers/google-drive` | v1.1.7 |
 | Google Forms | `ghcr.io/dunialabs/mcp-servers/google-forms` | v0.2.1 |
-| Google Sheets | `ghcr.io/dunialabs/mcp-servers/google-sheets` | v1.0.3 |
+| Google Sheets | `ghcr.io/dunialabs/mcp-servers/google-sheets` | v1.0.4 |
 | HubSpot | `ghcr.io/dunialabs/mcp-servers/hubspot` | v1.0.2 |
 | Intercom | `ghcr.io/dunialabs/mcp-servers/intercom` | v1.0.1 |
 | MySQL | `ghcr.io/dunialabs/mcp-servers/mysql` | v1.0.1 |

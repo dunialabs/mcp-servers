@@ -1,6 +1,6 @@
 {
   "name": "@petaio/mcp-google-sheets",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Google Sheets MCP Server for PETA ecosystem with STDIO transport. Provides spreadsheet metadata, values, and sheet structure tools.",
   "main": "dist/stdio.js",
   "type": "module",
