@@ -98,43 +98,43 @@ function ownerLabel(owners?: Person[] | null): string {
 function getTheme() {
   return isDarkTheme
     ? {
-        title: '#f5f5f5',
-        text: '#d4d4d8',
-        muted: '#a1a1aa',
+        title: '#e8f0fe',
+        text: '#a8c0f0',
+        muted: '#6888c8',
         shellBg:
-          'radial-gradient(circle at top left, rgba(103, 232, 249, 0.12), transparent 36%), linear-gradient(180deg, #0f172a 0%, #071e26 100%)',
-        panelBg: 'rgba(24, 24, 27, 0.94)',
-        panelBorder: 'rgba(103, 232, 249, 0.12)',
-        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
-        accent: '#67e8f9',
-        chipBg: '#164e63',
-        chipText: '#67e8f9',
-        statusChipBg: '#27272a',
-        statusChipText: '#d4d4d8',
-        headText: '#94a3b8',
-        rowBorder: 'rgba(103, 232, 249, 0.1)',
-        link: '#a5f3fc',
-        buttonBg: '#f5f5f5',
-        buttonText: '#111111',
+          'radial-gradient(circle at top left, rgba(26, 115, 232, 0.14), transparent 36%), linear-gradient(180deg, #060d1a 0%, #040a14 100%)',
+        panelBg: 'rgba(6, 14, 30, 0.97)',
+        panelBorder: 'rgba(26, 115, 232, 0.14)',
+        shadow: '0 10px 24px rgba(0, 0, 0, 0.40)',
+        accent: '#4e8df5',
+        chipBg: '#0a1840',
+        chipText: '#7eb0f8',
+        statusChipBg: '#0e1e40',
+        statusChipText: '#a8c0f0',
+        headText: '#6888c8',
+        rowBorder: 'rgba(26, 115, 232, 0.1)',
+        link: '#7eb0f8',
+        buttonBg: '#e8f0fe',
+        buttonText: '#060d1a',
       }
     : {
-        title: '#0c1a1f',
-        text: '#5b6471',
-        muted: '#667085',
+        title: '#0d2860',
+        text: '#2a4a8a',
+        muted: '#4a6aaa',
         shellBg:
-          'radial-gradient(circle at top left, rgba(207, 250, 254, 0.85), transparent 35%), linear-gradient(180deg, #f0fdff 0%, #ecfeff 100%)',
-        panelBg: 'rgba(255,255,255,0.93)',
-        panelBorder: 'rgba(8, 145, 178, 0.1)',
-        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
-        accent: '#0891b2',
-        chipBg: '#ecfeff',
-        chipText: '#0891b2',
-        statusChipBg: '#f3f4f6',
-        statusChipText: '#374151',
-        headText: '#667085',
-        rowBorder: 'rgba(8, 145, 178, 0.07)',
-        link: '#164e63',
-        buttonBg: '#0c1a1f',
+          'radial-gradient(circle at top left, rgba(26, 115, 232, 0.10), transparent 36%), linear-gradient(180deg, #f0f4ff 0%, #e8f0fe 100%)',
+        panelBg: 'rgba(255, 255, 255, 0.94)',
+        panelBorder: 'rgba(26, 115, 232, 0.12)',
+        shadow: '0 8px 20px rgba(10, 30, 80, 0.06)',
+        accent: '#1a73e8',
+        chipBg: '#e8f0fe',
+        chipText: '#1a56c4',
+        statusChipBg: '#f0f4ff',
+        statusChipText: '#2a4a8a',
+        headText: '#6a8ac8',
+        rowBorder: 'rgba(26, 115, 232, 0.08)',
+        link: '#1a56c4',
+        buttonBg: '#0d2860',
         buttonText: '#ffffff',
       };
 }
@@ -357,4 +357,6 @@ app.onhostcontextchanged = () => {
   applyHost();
   if (currentPayload.file) render(currentPayload);
 };
-app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
+void app.connect(new PostMessageTransport(window.parent, window.parent)).then(() => {
+  applyHost();
+});
