@@ -204,48 +204,48 @@ function buildEventGroups(events: EventRecord[]): EventGroup[] {
 function getTheme() {
   return isDarkTheme
     ? {
-        title: '#f5f5f5',
-        text: '#d4d4d8',
-        muted: '#a1a1aa',
+        title: '#e8f0fe',
+        text: '#a8c0f0',
+        muted: '#6888c8',
         shellBg:
-          'radial-gradient(circle at top left, rgba(249, 168, 212, 0.12), transparent 36%), linear-gradient(180deg, #0f172a 0%, #1a0f17 100%)',
-        panelBg: 'rgba(24, 24, 27, 0.94)',
-        panelBorder: 'rgba(249, 168, 212, 0.12)',
-        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
-        accent: '#f9a8d4',
-        chipBg: '#500724',
-        chipText: '#f9a8d4',
-        headText: '#94a3b8',
-        rowBorder: 'rgba(249, 168, 212, 0.1)',
-        link: '#fbcfe8',
-        buttonBg: '#f5f5f5',
-        buttonText: '#111111',
-        timeBg: 'rgba(249, 168, 212, 0.15)',
-        timeText: '#f9a8d4',
-        occurrenceBg: '#500724',
-        occurrenceText: '#f9a8d4',
+          'radial-gradient(circle at top left, rgba(26, 115, 232, 0.14), transparent 36%), linear-gradient(180deg, #060d1a 0%, #040a14 100%)',
+        panelBg: 'rgba(6, 14, 30, 0.97)',
+        panelBorder: 'rgba(26, 115, 232, 0.14)',
+        shadow: '0 10px 24px rgba(0, 0, 0, 0.40)',
+        accent: '#4e8df5',
+        chipBg: '#0a1840',
+        chipText: '#7eb0f8',
+        headText: '#6888c8',
+        rowBorder: 'rgba(26, 115, 232, 0.1)',
+        link: '#7eb0f8',
+        buttonBg: '#e8f0fe',
+        buttonText: '#060d1a',
+        timeBg: 'rgba(26, 115, 232, 0.14)',
+        timeText: '#4e8df5',
+        occurrenceBg: '#0a1840',
+        occurrenceText: '#7eb0f8',
       }
     : {
-        title: '#2d0a1a',
-        text: '#5b6471',
-        muted: '#667085',
+        title: '#0d2860',
+        text: '#2a4a8a',
+        muted: '#4a6aaa',
         shellBg:
-          'radial-gradient(circle at top left, rgba(253, 242, 248, 0.85), transparent 35%), linear-gradient(180deg, #fff5f8 0%, #fdf2f8 100%)',
-        panelBg: 'rgba(255,255,255,0.93)',
-        panelBorder: 'rgba(219, 39, 119, 0.1)',
-        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
-        accent: '#db2777',
-        chipBg: '#fdf2f8',
-        chipText: '#db2777',
-        headText: '#667085',
-        rowBorder: 'rgba(219, 39, 119, 0.07)',
-        link: '#831843',
-        buttonBg: '#2d0a1a',
+          'radial-gradient(circle at top left, rgba(26, 115, 232, 0.10), transparent 36%), linear-gradient(180deg, #f0f4ff 0%, #e8f0fe 100%)',
+        panelBg: 'rgba(255, 255, 255, 0.94)',
+        panelBorder: 'rgba(26, 115, 232, 0.12)',
+        shadow: '0 8px 20px rgba(10, 30, 80, 0.06)',
+        accent: '#1a73e8',
+        chipBg: '#e8f0fe',
+        chipText: '#1a56c4',
+        headText: '#6a8ac8',
+        rowBorder: 'rgba(26, 115, 232, 0.08)',
+        link: '#1a56c4',
+        buttonBg: '#0d2860',
         buttonText: '#ffffff',
-        timeBg: '#fce7f3',
-        timeText: '#be185d',
-        occurrenceBg: '#fce7f3',
-        occurrenceText: '#9d174d',
+        timeBg: '#e8f0fe',
+        timeText: '#1a56c4',
+        occurrenceBg: '#e8f0fe',
+        occurrenceText: '#1a56c4',
       };
 }
 
@@ -494,4 +494,6 @@ app.onhostcontextchanged = () => {
   applyHost();
   if (currentPayload.events) render(currentPayload);
 };
-app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
+void app.connect(new PostMessageTransport(window.parent, window.parent)).then(() => {
+  applyHost();
+});
