@@ -93,37 +93,37 @@ function render(payload: BrowserPayload) {
       : 'Browse readable Google Docs documents from Drive.';
   const theme = isDarkTheme
     ? {
-        title: '#f5f5f5',
-        text: '#d4d4d8',
-        muted: '#a1a1aa',
-        shellBg: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 34%), linear-gradient(180deg, #0f172a 0%, #172554 100%)',
-        panelBg: 'rgba(24, 24, 27, 0.94)',
-        panelBorder: 'rgba(191, 219, 254, 0.12)',
-        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
-        accent: '#93c5fd',
-        chipBg: '#172b4d',
-        chipText: '#93c5fd',
-        headText: '#94a3b8',
-        rowBorder: 'rgba(191, 219, 254, 0.1)',
-        link: '#e0f2fe',
-        buttonBg: '#f5f5f5',
-        buttonText: '#111111',
+        title: '#e8f0fe',
+        text: '#a8c0f0',
+        muted: '#6888c8',
+        shellBg: 'radial-gradient(circle at top left, rgba(66, 133, 244, 0.14), transparent 34%), linear-gradient(180deg, #060d1a 0%, #040a14 100%)',
+        panelBg: 'rgba(6, 14, 30, 0.97)',
+        panelBorder: 'rgba(66, 133, 244, 0.14)',
+        shadow: '0 10px 24px rgba(0, 0, 0, 0.40)',
+        accent: '#6ba4f8',
+        chipBg: '#0a1840',
+        chipText: '#7eb0f8',
+        headText: '#6888c8',
+        rowBorder: 'rgba(66, 133, 244, 0.1)',
+        link: '#7eb0f8',
+        buttonBg: '#e8f0fe',
+        buttonText: '#060d1a',
       }
     : {
-        title: '#18212f',
-        text: '#5b6471',
-        muted: '#667085',
-        shellBg: 'radial-gradient(circle at top left, rgba(231, 244, 255, 0.9), transparent 35%), linear-gradient(180deg, #f8fbff 0%, #fffdf8 100%)',
-        panelBg: 'rgba(255,255,255,0.93)',
-        panelBorder: 'rgba(24,33,47,0.1)',
-        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
-        accent: '#2563eb',
-        chipBg: '#eff6ff',
-        chipText: '#2563eb',
-        headText: '#667085',
-        rowBorder: 'rgba(24,33,47,0.06)',
-        link: '#5b6f95',
-        buttonBg: '#18212f',
+        title: '#0d2860',
+        text: '#2a4a8a',
+        muted: '#4a6aaa',
+        shellBg: 'radial-gradient(circle at top left, rgba(66, 133, 244, 0.10), transparent 36%), linear-gradient(180deg, #f0f4ff 0%, #e8f0fe 100%)',
+        panelBg: 'rgba(255, 255, 255, 0.94)',
+        panelBorder: 'rgba(66, 133, 244, 0.12)',
+        shadow: '0 8px 20px rgba(10, 30, 80, 0.06)',
+        accent: '#4285F4',
+        chipBg: '#e8f0fe',
+        chipText: '#2a6cd4',
+        headText: '#6a8ac8',
+        rowBorder: 'rgba(66, 133, 244, 0.08)',
+        link: '#2a6cd4',
+        buttonBg: '#0d2860',
         buttonText: '#ffffff',
       };
 
@@ -278,6 +278,7 @@ function bindRefresh() {
     render(currentPayload);
     try {
       const result = await app.callServerTool({ name: currentTool, arguments: currentArgs });
+      isRefreshing = false;
       render((result.structuredContent ?? {}) as BrowserPayload);
     } finally {
       isRefreshing = false;
@@ -302,4 +303,6 @@ app.onhostcontextchanged = () => {
   applyHost();
   if (currentPayload.documents) render(currentPayload);
 };
-app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
+void app.connect(new PostMessageTransport(window.parent, window.parent)).then(() => {
+  applyHost();
+});
