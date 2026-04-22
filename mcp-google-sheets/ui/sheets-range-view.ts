@@ -88,44 +88,44 @@ function parseStartColumn(range?: string | null): number {
 function getTheme() {
   return isDarkTheme
     ? {
-        title: '#f5f5f5',
-        text: '#d4d4d8',
-        muted: '#a1a1aa',
+        title: '#e8f9ef',
+        text: '#a8d8b8',
+        muted: '#5a9a72',
         shellBg:
-          'radial-gradient(circle at top left, rgba(34, 197, 94, 0.14), transparent 36%), linear-gradient(180deg, #0f172a 0%, #0b1a0d 100%)',
-        panelBg: 'rgba(24, 24, 27, 0.94)',
-        panelBorder: 'rgba(34, 197, 94, 0.12)',
-        shadow: '0 10px 24px rgba(2, 6, 23, 0.38)',
-        accent: '#4ade80',
-        chipBg: '#052e16',
-        chipText: '#4ade80',
-        headText: '#94a3b8',
-        rowBorder: 'rgba(34, 197, 94, 0.1)',
-        buttonBg: '#f5f5f5',
-        buttonText: '#111111',
-        thBg: 'rgba(24, 24, 27, 0.98)',
-        tdStripeBg: 'rgba(5, 46, 22, 0.25)',
-        rowIndexColor: '#94a3b8',
+          'radial-gradient(circle at top left, rgba(52, 168, 83, 0.14), transparent 36%), linear-gradient(180deg, #061510 0%, #04100a 100%)',
+        panelBg: 'rgba(6, 21, 12, 0.96)',
+        panelBorder: 'rgba(52, 168, 83, 0.12)',
+        shadow: '0 10px 24px rgba(0, 0, 0, 0.38)',
+        accent: '#34A853',
+        chipBg: '#061a0e',
+        chipText: '#5dd47e',
+        headText: '#5a9a72',
+        rowBorder: 'rgba(52, 168, 83, 0.1)',
+        buttonBg: '#e8f9ef',
+        buttonText: '#061510',
+        thBg: 'rgba(4, 14, 8, 0.98)',
+        tdStripeBg: 'rgba(6, 26, 14, 0.35)',
+        rowIndexColor: '#5a9a72',
       }
     : {
-        title: '#14200d',
-        text: '#5b6471',
-        muted: '#667085',
+        title: '#0a2e1a',
+        text: '#1a4a2e',
+        muted: '#3a7a52',
         shellBg:
-          'radial-gradient(circle at top left, rgba(220, 252, 231, 0.85), transparent 35%), linear-gradient(180deg, #f7fdf9 0%, #f0fdf4 100%)',
-        panelBg: 'rgba(255,255,255,0.93)',
-        panelBorder: 'rgba(20, 83, 45, 0.1)',
-        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
-        accent: '#15803d',
-        chipBg: '#f0fdf4',
-        chipText: '#15803d',
-        headText: '#667085',
-        rowBorder: 'rgba(20, 83, 45, 0.07)',
-        buttonBg: '#14200d',
+          'radial-gradient(circle at top left, rgba(15, 157, 88, 0.12), transparent 36%), linear-gradient(180deg, #f2fcf6 0%, #e8f9ef 100%)',
+        panelBg: 'rgba(255, 255, 255, 0.93)',
+        panelBorder: 'rgba(15, 157, 88, 0.12)',
+        shadow: '0 8px 20px rgba(0, 50, 20, 0.06)',
+        accent: '#0F9D58',
+        chipBg: '#e8f9ef',
+        chipText: '#0d6b3a',
+        headText: '#5a9a72',
+        rowBorder: 'rgba(15, 157, 88, 0.08)',
+        buttonBg: '#0a2e1a',
         buttonText: '#ffffff',
-        thBg: '#f7fdf9',
-        tdStripeBg: 'rgba(240, 253, 244, 0.55)',
-        rowIndexColor: '#667085',
+        thBg: '#f2fcf6',
+        tdStripeBg: 'rgba(232, 249, 239, 0.45)',
+        rowIndexColor: '#5a9a72',
       };
 }
 
@@ -297,4 +297,6 @@ app.onhostcontextchanged = () => {
   applyHost();
   if (currentPayload.range || currentPayload.values) render(currentPayload);
 };
-app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
+void app.connect(new PostMessageTransport(window.parent, window.parent)).then(() => {
+  applyHost();
+});
