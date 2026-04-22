@@ -91,35 +91,35 @@ function render(payload: BrowserPayload) {
   const mode = payload.mode ?? 'list';
   const theme = isDarkTheme
     ? {
-        title: '#f5f5f5',
-        text: '#e5e7eb',
-        muted: '#a1a1aa',
-        shellBg: 'radial-gradient(circle at top left, rgba(26, 115, 232, 0.14), transparent 36%), linear-gradient(180deg, #0f172a 0%, #060d1a 100%)',
-        panelBg: 'rgba(24,24,27,0.94)',
-        panelBorder: 'rgba(147, 197, 253, 0.12)',
-        shadow: '0 8px 20px rgba(0, 0, 0, 0.28)',
-        accent: '#60a5fa',
-        chipBg: '#0c1a3d',
-        chipText: '#93c5fd',
-        headText: '#a1a1aa',
-        rowBorder: 'rgba(147, 197, 253, 0.1)',
-        buttonBg: '#f5f5f5',
-        buttonText: '#111111',
+        title: '#f8e8e5',
+        text: '#c8a8a2',
+        muted: '#b89090',
+        shellBg: 'radial-gradient(circle at top left, rgba(234, 67, 53, 0.08), transparent 32%), linear-gradient(180deg, #1e1818 0%, #161212 100%)',
+        panelBg: 'rgba(30, 22, 22, 0.98)',
+        panelBorder: 'rgba(234, 67, 53, 0.18)',
+        shadow: '0 10px 24px rgba(0, 0, 0, 0.45)',
+        accent: '#f87060',
+        chipBg: '#3e2828',
+        chipText: '#f8a898',
+        headText: '#b08888',
+        rowBorder: 'rgba(234, 67, 53, 0.12)',
+        buttonBg: '#f8e8e5',
+        buttonText: '#1e1818',
       }
     : {
-        title: '#0d1f3c',
-        text: '#5b6471',
-        muted: '#667085',
-        shellBg: 'radial-gradient(circle at top left, rgba(219, 234, 254, 0.85), transparent 35%), linear-gradient(180deg, #f8fbff 0%, #f0f7ff 100%)',
-        panelBg: 'rgba(255,255,255,0.93)',
-        panelBorder: 'rgba(26, 115, 232, 0.1)',
-        shadow: '0 8px 20px rgba(15, 23, 42, 0.05)',
-        accent: '#1a73e8',
-        chipBg: '#dbeafe',
-        chipText: '#1d4ed8',
-        headText: '#667085',
-        rowBorder: 'rgba(26, 115, 232, 0.07)',
-        buttonBg: '#0d1f3c',
+        title: '#2d0a06',
+        text: '#5a2018',
+        muted: '#8a4030',
+        shellBg: 'radial-gradient(circle at top left, rgba(234, 67, 53, 0.10), transparent 36%), linear-gradient(180deg, #fff5f4 0%, #feecea 100%)',
+        panelBg: 'rgba(255, 255, 255, 0.94)',
+        panelBorder: 'rgba(234, 67, 53, 0.12)',
+        shadow: '0 8px 20px rgba(80, 10, 5, 0.06)',
+        accent: '#EA4335',
+        chipBg: '#feecea',
+        chipText: '#c0392b',
+        headText: '#8a6060',
+        rowBorder: 'rgba(234, 67, 53, 0.08)',
+        buttonBg: '#2d0a06',
         buttonText: '#ffffff',
       };
   root.innerHTML = `
@@ -249,4 +249,6 @@ app.onhostcontextchanged = () => {
   applyHost();
   if (currentPayload.messages) render(currentPayload);
 };
-app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
+void app.connect(new PostMessageTransport(window.parent, window.parent)).then(() => {
+  applyHost();
+});
