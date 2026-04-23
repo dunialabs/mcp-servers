@@ -93,7 +93,6 @@ function render(payload: PagePayload) {
         muted: '#a1a1aa',
         shellBg: 'radial-gradient(circle at top left, rgba(91, 33, 182, 0.18), transparent 35%), linear-gradient(180deg, #111111 0%, #18181b 100%)',
         panelBg: 'rgba(24,24,27,0.94)',
-        panelBorder: 'rgba(244,244,245,0.08)',
         shadow: '0 8px 20px rgba(0,0,0,0.28)',
         accent: '#c4b5fd',
         chipBg: '#2b2047',
@@ -213,4 +212,6 @@ app.onhostcontextchanged = () => {
   applyHost();
   if (currentPayload.page) render(currentPayload);
 };
-app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
+void app.connect(new PostMessageTransport(window.parent, window.parent)).then(() => {
+  applyHost();
+});

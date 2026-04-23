@@ -255,4 +255,6 @@ app.onhostcontextchanged = () => {
   if (currentPayload.deal) render(currentPayload);
 };
 
-app.connect(new PostMessageTransport(window.parent, window.parent)).then(applyHost);
+void app.connect(new PostMessageTransport(window.parent, window.parent)).then(() => {
+  applyHost();
+});
